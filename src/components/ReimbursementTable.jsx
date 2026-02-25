@@ -1,8 +1,8 @@
 const statusClassMap = {
-  Pending: "bg-amber-200 text-amber-800",
-  Approved: "bg-emerald-200 text-emerald-800",
-  Rejected: "bg-rose-200 text-rose-800",
-  Cancelled: "bg-gray-500 text-gray-300"
+  Pending: "bg-amber-100 text-amber-700",
+  Approved: "bg-emerald-100 text-emerald-700",
+  Rejected: "bg-rose-100 text-rose-700",
+  Cancelled: "bg-slate-100 text-slate-700"
 };
 
 const formatDate = (value) =>
@@ -34,7 +34,7 @@ const ReimbursementTable = ({
 }) => {
   if (reimbursements.length === 0) {
     return (
-      <div className="text-center py-8 text-gray-400">
+      <div className="text-center py-8 text-slate-500">
         No reimbursement records found.
       </div>
     );
@@ -50,23 +50,23 @@ const ReimbursementTable = ({
           <div className="flex justify-between">
             <div className="space-y-1">
               {showEmployee && (
-                <p className="font-semibold text-gray-100">
+                <p className="font-semibold text-slate-900">
                   {claim.employee?.name || "-"}
                 </p>
               )}
-              <p className="text-sm text-gray-300">
+              <p className="text-sm text-slate-600">
                 Expense: {formatDate(claim.expenseDate)}
               </p>
-              <p className="text-sm text-gray-300">Title: {claim.title}</p>
-              <p className="text-sm text-gray-300">Category: {claim.category}</p>
-              <p className="text-sm text-gray-300">
+              <p className="text-sm text-slate-600">Title: {claim.title}</p>
+              <p className="text-sm text-slate-600">Category: {claim.category}</p>
+              <p className="text-sm text-slate-600">
                 Amount: {formatCurrency(claim.amount)}
               </p>
-              <p className="text-sm text-gray-300">{claim.description}</p>
+              <p className="text-sm text-slate-600">{claim.description}</p>
             </div>
             <span
               className={`status-pill ${
-                statusClassMap[claim.status] || "bg-gray-700 text-gray-200"
+                statusClassMap[claim.status] || "bg-slate-50 text-slate-700"
               }`}
             >
               {claim.status}

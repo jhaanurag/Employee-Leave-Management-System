@@ -61,22 +61,22 @@ const Login = () => {
         <section className="card hidden p-8 md:block">
           <div className="max-w-md animate-fade-in-up">
             <p className="page-kicker">Employee Leave Management</p>
-            <h1 className="mt-3 text-4xl font-extrabold leading-tight text-gray-100">
+            <h1 className="mt-3 text-4xl font-extrabold leading-tight text-slate-900">
               A cleaner way to manage leave workflows.
             </h1>
-            <p className="mt-4 text-sm leading-6 text-gray-300">
+            <p className="mt-4 text-sm leading-6 text-slate-600">
               Apply, review, and manage leave requests with role-based dashboards and policy-driven controls.
             </p>
             <div className="mt-8 space-y-3">
               <div className="card-muted p-3">
-                <p className="text-sm font-semibold text-gray-300">Role-aware access</p>
-                <p className="mt-1 text-xs text-gray-300">
+                <p className="text-sm font-semibold text-slate-600">Role-aware access</p>
+                <p className="mt-1 text-xs text-slate-600">
                   Admin, manager, and employee experiences are separated by policy.
                 </p>
               </div>
               <div className="card-muted p-3">
-                <p className="text-sm font-semibold text-gray-300">Live leave balance</p>
-                <p className="mt-1 text-xs text-gray-300">
+                <p className="text-sm font-semibold text-slate-600">Live leave balance</p>
+                <p className="mt-1 text-xs text-slate-600">
                   Employees see remaining balance and request limits before applying.
                 </p>
               </div>
@@ -89,10 +89,10 @@ const Login = () => {
             <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-brand-500 text-lg font-extrabold text-white shadow-surface">
               HR
             </div>
-            <h2 className="text-2xl font-extrabold text-gray-100">
+            <h2 className="text-2xl font-extrabold text-slate-900">
               {isRegisterMode ? "Create Account" : "Welcome Back"}
             </h2>
-            <p className="mt-2 text-sm text-gray-300">
+            <p className="mt-2 text-sm text-slate-600">
               {isRegisterMode
                 ? "Create your account to access the leave portal."
                 : "Sign in to continue to your dashboard."}
@@ -100,7 +100,7 @@ const Login = () => {
           </div>
 
           {error && (
-            <div className="mb-4 rounded-xl border border-rose-600 bg-rose-800 px-4 py-3 text-sm font-semibold text-rose-100">
+            <div className="mb-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-700">
               {error}
             </div>
           )}
@@ -108,7 +108,7 @@ const Login = () => {
           <form className="space-y-4" onSubmit={handleSubmit}>
             {isRegisterMode && (
               <div>
-                <label className="mb-1 block text-sm font-semibold text-gray-300">
+                <label className="mb-1 block text-sm font-semibold text-slate-600">
                   Full Name
                 </label>
                 <input
@@ -124,7 +124,7 @@ const Login = () => {
             )}
 
             <div>
-              <label className="mb-1 block text-sm font-semibold text-gray-300">
+              <label className="mb-1 block text-sm font-semibold text-slate-600">
                 Email
               </label>
               <input

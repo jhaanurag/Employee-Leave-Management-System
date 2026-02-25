@@ -6,19 +6,13 @@
 
 @layer base {
   :root {
-    /* dark theme variables */
-    --bg: #1a1a2e;
-    --panel: #16213e;
-    --border: #0f3460;
-    --text: #eaeaea;
-    --muted: #cfcfcf;
-    --brand: #e94560; /* bright magenta accent */
+    --brand: #1f8f7b;
   }
 
   body {
     font-family: "Plus Jakarta Sans", sans-serif;
-    background: linear-gradient(135deg, #1a1a2e 0%, #0f3460 100%);
-    @apply min-h-screen text-gray-200 antialiased;
+    background: #f8fafc;
+    @apply min-h-screen text-slate-800 antialiased;
   }
 
   #root {
@@ -43,17 +37,15 @@
   }
 
   .card {
-    background: var(--panel);
-    border-color: var(--border);
-    @apply rounded-2xl border shadow-card backdrop-blur-sm;
+    @apply rounded-2xl border border-slate-200 bg-white shadow-sm;
   }
 
   .card-muted {
-    @apply rounded-2xl border border-gray-600 bg-gray-800/75;
+    @apply rounded-2xl border border-slate-200 bg-slate-50;
   }
 
   .page-title {
-    @apply text-2xl font-extrabold text-gray-100 md:text-3xl;
+    @apply text-2xl font-extrabold text-slate-900 md:text-3xl;
   }
 
   .page-kicker {
@@ -61,34 +53,34 @@
   }
 
   .input-field {
-    @apply w-full rounded-xl border border-gray-600 bg-gray-800 px-4 py-2.5 text-sm text-gray-200 outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-100;
+    @apply w-full rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm text-slate-900 outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-100;
   }
 
   .btn-primary {
-    @apply inline-flex items-center justify-center rounded-xl bg-brand-300 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-brand-400 disabled:cursor-not-allowed disabled:opacity-60;
+    @apply inline-flex items-center justify-center rounded-xl bg-brand-500 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-60;
   }
 
   .btn-secondary {
-    @apply inline-flex items-center justify-center rounded-xl border border-gray-600 bg-gray-600 px-4 py-2.5 text-sm font-semibold text-gray-200 transition hover:bg-gray-500;
+    @apply inline-flex items-center justify-center rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50;
   }
 
   .btn-ghost {
-    @apply inline-flex items-center justify-center rounded-xl border border-transparent px-3 py-2 text-sm font-semibold text-gray-200 transition hover:border-gray-600 hover:bg-gray-700;
+    @apply inline-flex items-center justify-center rounded-xl border border-transparent px-3 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-100;
   }
 
   .status-pill {
-    @apply inline-flex rounded-full px-3 py-1 text-xs font-bold uppercase tracking-wide opacity-90;
+    @apply inline-flex rounded-full px-3 py-1 text-xs font-bold uppercase tracking-wide;
   }
 
   .table-head {
-    @apply bg-gray-700 text-left text-xs font-bold uppercase tracking-[0.12em] text-gray-300;
+    @apply bg-slate-50 text-left text-xs font-bold uppercase tracking-[0.12em] text-slate-500;
   }
 
   .table-cell {
-    @apply px-4 py-3 text-sm text-gray-200;
+    @apply px-4 py-3 text-sm text-slate-700;
   }
 
   .stat-number {
-    @apply text-3xl font-extrabold text-gray-100;
+    @apply text-3xl font-extrabold text-slate-900;
   }
 }

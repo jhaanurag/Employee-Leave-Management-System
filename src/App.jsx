@@ -18,7 +18,7 @@ const HomeRedirect = () => {
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center">
-        <div className="card px-6 py-4 text-sm font-semibold text-gray-400">
+        <div className="card px-6 py-4 text-sm font-semibold text-slate-600">
           Loading...
         </div>
       </div>

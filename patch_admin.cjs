@@ -1,226 +1,18 @@
-import { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import LeaveCard from "../components/LeaveCard";
-import LeaveTable from "../components/LeaveTable";
-import ReimbursementTable from "../components/ReimbursementTable";
-import Sidebar from "../components/Sidebar";
-import { useAuth } from "../context/AuthContext";
-import api from "../services/api";
+const fs = require('fs');
+const file = './src/pages/AdminPanel.jsx';
+let content = fs.readFileSync(file, 'utf8');
 
-const roleOptions = ["Admin", "Manager", "Employee"];
-const roleFilters = ["All", ...roleOptions];
+// Add activeTab state
+content = content.replace(
+  'const [searchQuery, setSearchQuery] = useState("");',
+  'const [searchQuery, setSearchQuery] = useState("");\n  const [activeTab, setActiveTab] = useState("Users");'
+);
 
-const emptyUserForm = {
-  name: "",
-  email: "",
-  password: "",
-  role: "Employee"
-};
+// Replace the main content structure
+const mainStart = content.indexOf('<main className="page-content flex-1 mt-4">');
+const mainEnd = content.lastIndexOf('</main>') + 7;
 
-const emptyLeaveSummary = {
-  Pending: 0,
-  Approved: 0,
-  Rejected: 0,
-  Cancelled: 0
-};
-
-const emptyReimbursementSummary = {
-  Pending: 0,
-  Approved: 0,
-  Rejected: 0,
-  Cancelled: 0,
-  totalAmount: 0,
-  approvedAmount: 0,
-  pendingAmount: 0
-};
-
-const formatCurrency = (amount) =>
-  new Intl.NumberFormat("en-IN", {
-    style: "currency",
-    currency: "INR",
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2
-  }).format(Number(amount || 0));
-
-const AdminPanel = () => {
-  const navigate = useNavigate();
-  const { user, logout } = useAuth();
-
-  const [users, setUsers] = useState([]);
-  const [leaves, setLeaves] = useState([]);
-  const [reimbursements, setReimbursements] = useState([]);
-  const [loadingUsers, setLoadingUsers] = useState(true);
-  const [loadingLeaves, setLoadingLeaves] = useState(true);
-  const [loadingReimbursements, setLoadingReimbursements] = useState(true);
-  const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
-  const [showCreateModal, setShowCreateModal] = useState(false);
-  const [creating, setCreating] = useState(false);
-  const [updatingId, setUpdatingId] = useState("");
-  const [userForm, setUserForm] = useState(emptyUserForm);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [activeTab, setActiveTab] = useState("Users");
-  const [selectedRole, setSelectedRole] = useState("All");
-  const [leaveSummary, setLeaveSummary] = useState(emptyLeaveSummary);
-  const [reimbursementSummary, setReimbursementSummary] = useState(
-    emptyReimbursementSummary
-  );
-
-  const roleCount = useMemo(
-    () =>
-      users.reduce(
-        (acc, current) => {
-          acc[current.role] = (acc[current.role] || 0) + 1;
-          return acc;
-        },
-        { Admin: 0, Manager: 0, Employee: 0 }
-      ),
-    [users]
-  );
-
-  const filteredUsers = useMemo(() => {
-    const normalizedQuery = searchQuery.trim().toLowerCase();
-
-    return users.filter((tableUser) => {
-      const matchesRole =
-        selectedRole === "All" ? true : tableUser.role === selectedRole;
-      const matchesQuery = normalizedQuery
-        ? tableUser.name.toLowerCase().includes(normalizedQuery) ||
-          tableUser.email.toLowerCase().includes(normalizedQuery)
-        : true;
-
-      return matchesRole && matchesQuery;
-    });
-  }, [searchQuery, selectedRole, users]);
-
-  const recentLeaves = useMemo(() => leaves.slice(0, 6), [leaves]);
-  const recentReimbursements = useMemo(
-    () => reimbursements.slice(0, 6),
-    [reimbursements]
-  );
-
-  const loadUsers = async () => {
-    setLoadingUsers(true);
-    setError("");
-
-    try {
-      const response = await api.get("/users");
-      setUsers(response.data.data || []);
-    } catch (requestError) {
-      setError(
-        requestError.response?.data?.message ||
-          "Unable to fetch users. Please retry."
-      );
-    } finally {
-      setLoadingUsers(false);
-    }
-  };
-
-  const loadLeaves = async () => {
-    setLoadingLeaves(true);
-
-    try {
-      const response = await api.get("/leaves/admin");
-      setLeaves(response.data.data || []);
-      setLeaveSummary(response.data.meta?.summary || emptyLeaveSummary);
-    } catch (requestError) {
-      setError(
-        requestError.response?.data?.message ||
-          "Unable to fetch leave analytics."
-      );
-    } finally {
-      setLoadingLeaves(false);
-    }
-  };
-
-  const loadReimbursements = async () => {
-    setLoadingReimbursements(true);
-
-    try {
-      const response = await api.get("/reimbursements/admin");
-      setReimbursements(response.data.data || []);
-      setReimbursementSummary(
-        response.data.meta?.summary || emptyReimbursementSummary
-      );
-    } catch (requestError) {
-      setError(
-        requestError.response?.data?.message ||
-          "Unable to fetch reimbursement analytics."
-      );
-    } finally {
-      setLoadingReimbursements(false);
-    }
-  };
-
-  const refreshAnalytics = async () => {
-    setError("");
-    await Promise.all([loadLeaves(), loadReimbursements()]);
-  };
-
-  useEffect(() => {
-    const loadPanelData = async () => {
-      await Promise.all([loadUsers(), loadLeaves(), loadReimbursements()]);
-    };
-
-    loadPanelData();
-  }, []);
-
-  const onFormChange = (event) => {
-    const { name, value } = event.target;
-    setUserForm((current) => ({ ...current, [name]: value }));
-  };
-
-  const onCreateUser = async (event) => {
-    event.preventDefault();
-    setCreating(true);
-    setError("");
-    setSuccess("");
-
-    try {
-      await api.post("/users", userForm);
-      setUserForm(emptyUserForm);
-      setShowCreateModal(false);
-      setSuccess("User created successfully.");
-      await loadUsers();
-    } catch (requestError) {
-      setError(
-        requestError.response?.data?.message ||
-          "Failed to create user. Check inputs."
-      );
-    } finally {
-      setCreating(false);
-    }
-  };
-
-  const onUpdateRole = async (id, role) => {
-    setUpdatingId(id);
-    setError("");
-    setSuccess("");
-
-    try {
-      await api.patch(`/users/${id}/role`, { role });
-      setSuccess("User role updated.");
-      await loadUsers();
-    } catch (requestError) {
-      setError(
-        requestError.response?.data?.message ||
-          "Role update failed. Please try again."
-      );
-    } finally {
-      setUpdatingId("");
-    }
-  };
-
-  const handleLogout = async () => {
-    await logout();
-    navigate("/login", { replace: true });
-  };
-
-  return (
-    <div className="app-shell flex-col gap-4">
-      <Sidebar role={user.role} userName={user.name} onLogout={handleLogout} />
-
-      <main className="page-content flex-1 mt-4">
+const newMain = `<main className="page-content flex-1 mt-4">
         <section className="card p-6">
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div>
@@ -252,31 +44,31 @@ const AdminPanel = () => {
             <nav className="-mb-px flex space-x-8">
               <button
                 onClick={() => setActiveTab("Users")}
-                className={`whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium ${
+                className={\`whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium \${
                   activeTab === "Users"
                     ? "border-brand-500 text-brand-600"
                     : "border-transparent text-slate-500 hover:border-slate-300 hover:text-slate-700"
-                }`}
+                }\`}
               >
                 Users
               </button>
               <button
                 onClick={() => setActiveTab("Leaves")}
-                className={`whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium ${
+                className={\`whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium \${
                   activeTab === "Leaves"
                     ? "border-brand-500 text-brand-600"
                     : "border-transparent text-slate-500 hover:border-slate-300 hover:text-slate-700"
-                }`}
+                }\`}
               >
                 Leaves
               </button>
               <button
                 onClick={() => setActiveTab("Reimbursements")}
-                className={`whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium ${
+                className={\`whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium \${
                   activeTab === "Reimbursements"
                     ? "border-brand-500 text-brand-600"
                     : "border-transparent text-slate-500 hover:border-slate-300 hover:text-slate-700"
-                }`}
+                }\`}
               >
                 Reimbursements
               </button>
@@ -511,93 +303,7 @@ const AdminPanel = () => {
             </section>
           </>
         )}
-      </main>
+      </main>`;
 
-      {showCreateModal ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 px-4">
-          <div className="card w-full max-w-md p-6">
-            <h3 className="text-lg font-extrabold text-slate-900">Create New User</h3>
-            <p className="mt-1 text-sm text-slate-600">
-              Add a new user and assign a role.
-            </p>
-
-            <form className="mt-5 space-y-4" onSubmit={onCreateUser}>
-              <div>
-                <label className="mb-1 block text-sm font-semibold text-slate-700">
-                  Name
-                </label>
-                <input
-                  type="text"
-                  className="input-field"
-                  name="name"
-                  value={userForm.name}
-                  onChange={onFormChange}
-                  required
-                />
-              </div>
-              <div>
-                <label className="mb-1 block text-sm font-semibold text-slate-700">
-                  Email
-                </label>
-                <input
-                  type="email"
-                  className="input-field"
-                  name="email"
-                  value={userForm.email}
-                  onChange={onFormChange}
-                  required
-                />
-              </div>
-              <div>
-                <label className="mb-1 block text-sm font-semibold text-slate-700">
-                  Password
-                </label>
-                <input
-                  type="password"
-                  className="input-field"
-                  name="password"
-                  minLength={8}
-                  value={userForm.password}
-                  onChange={onFormChange}
-                  required
-                />
-              </div>
-              <div>
-                <label className="mb-1 block text-sm font-semibold text-slate-700">
-                  Role
-                </label>
-                <select
-                  className="input-field"
-                  name="role"
-                  value={userForm.role}
-                  onChange={onFormChange}
-                >
-                  {roleOptions.map((role) => (
-                    <option key={role} value={role}>
-                      {role}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="flex gap-3 pt-2">
-                <button
-                  type="button"
-                  className="btn-secondary flex-1"
-                  onClick={() => setShowCreateModal(false)}
-                >
-                  Cancel
-                </button>
-                <button type="submit" className="btn-primary flex-1" disabled={creating}>
-                  {creating ? "Creating..." : "Create"}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      ) : null}
-    </div>
-  );
-};
-
-export default AdminPanel;
+content = content.substring(0, mainStart) + newMain + content.substring(mainEnd);
+fs.writeFileSync(file, content, 'utf8');

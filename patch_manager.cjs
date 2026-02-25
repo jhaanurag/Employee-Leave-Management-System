@@ -1,207 +1,18 @@
-import { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import LeaveCard from "../components/LeaveCard";
-import LeaveTable from "../components/LeaveTable";
-import ReimbursementTable from "../components/ReimbursementTable";
-import Sidebar from "../components/Sidebar";
-import { useAuth } from "../context/AuthContext";
-import api from "../services/api";
+const fs = require('fs');
+const file = './src/pages/ManagerDashboard.jsx';
+let content = fs.readFileSync(file, 'utf8');
 
-const statusFilters = ["All", "Pending", "Approved", "Rejected", "Cancelled"];
+// Add activeTab state
+content = content.replace(
+  'const [leaveQuery, setLeaveQuery] = useState("");',
+  'const [leaveQuery, setLeaveQuery] = useState("");\n  const [activeTab, setActiveTab] = useState("Leaves");'
+);
 
-const emptySummary = {
-  Pending: 0,
-  Approved: 0,
-  Rejected: 0,
-  Cancelled: 0
-};
+// Replace the main content structure
+const mainStart = content.indexOf('<main className="page-content flex-1 mt-4">');
+const mainEnd = content.lastIndexOf('</main>') + 7;
 
-const emptyReimbursementSummary = {
-  Pending: 0,
-  Approved: 0,
-  Rejected: 0,
-  Cancelled: 0,
-  totalAmount: 0,
-  approvedAmount: 0,
-  pendingAmount: 0
-};
-
-const formatCurrency = (amount) =>
-  new Intl.NumberFormat("en-IN", {
-    style: "currency",
-    currency: "INR",
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2
-  }).format(Number(amount || 0));
-
-const ManagerDashboard = () => {
-  const navigate = useNavigate();
-  const { user, logout } = useAuth();
-
-  const [leaves, setLeaves] = useState([]);
-  const [leaveSummary, setLeaveSummary] = useState(emptySummary);
-  const [leaveRemarksById, setLeaveRemarksById] = useState({});
-  const [loadingLeaves, setLoadingLeaves] = useState(true);
-  const [leaveActionLoadingId, setLeaveActionLoadingId] = useState("");
-  const [leaveStatusFilter, setLeaveStatusFilter] = useState("All");
-  const [leaveQuery, setLeaveQuery] = useState("");
-  const [activeTab, setActiveTab] = useState("Leaves");
-
-  const [reimbursements, setReimbursements] = useState([]);
-  const [reimbursementSummary, setReimbursementSummary] = useState(
-    emptyReimbursementSummary
-  );
-  const [reimbursementRemarksById, setReimbursementRemarksById] = useState({});
-  const [loadingReimbursements, setLoadingReimbursements] = useState(true);
-  const [reimbursementActionLoadingId, setReimbursementActionLoadingId] =
-    useState("");
-  const [reimbursementStatusFilter, setReimbursementStatusFilter] =
-    useState("All");
-  const [reimbursementQuery, setReimbursementQuery] = useState("");
-
-  const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
-
-  const loadLeaveRequests = async () => {
-    setLoadingLeaves(true);
-
-    try {
-      const response = await api.get("/leaves/manager");
-      setLeaves(response.data.data || []);
-      setLeaveSummary(response.data.meta?.summary || emptySummary);
-    } catch (requestError) {
-      setError(
-        requestError.response?.data?.message ||
-          "Unable to load leave requests right now."
-      );
-    } finally {
-      setLoadingLeaves(false);
-    }
-  };
-
-  const loadReimbursementRequests = async () => {
-    setLoadingReimbursements(true);
-
-    try {
-      const response = await api.get("/reimbursements/manager");
-      setReimbursements(response.data.data || []);
-      setReimbursementSummary(
-        response.data.meta?.summary || emptyReimbursementSummary
-      );
-    } catch (requestError) {
-      setError(
-        requestError.response?.data?.message ||
-          "Unable to load reimbursement requests right now."
-      );
-    } finally {
-      setLoadingReimbursements(false);
-    }
-  };
-
-  const loadAllRequests = async () => {
-    setError("");
-    await Promise.all([loadLeaveRequests(), loadReimbursementRequests()]);
-  };
-
-  useEffect(() => {
-    loadAllRequests();
-  }, []);
-
-  const handleLeaveRemarksChange = (id, value) => {
-    setLeaveRemarksById((current) => ({ ...current, [id]: value }));
-  };
-
-  const handleReimbursementRemarksChange = (id, value) => {
-    setReimbursementRemarksById((current) => ({ ...current, [id]: value }));
-  };
-
-  const handleLeaveAction = async (id, status, remarks) => {
-    setLeaveActionLoadingId(id);
-    setError("");
-    setSuccess("");
-
-    try {
-      await api.patch(`/leaves/${id}/review`, { status, remarks });
-      await loadLeaveRequests();
-      setSuccess(`Leave request ${status.toLowerCase()} successfully.`);
-    } catch (requestError) {
-      setError(
-        requestError.response?.data?.message ||
-          "Failed to review leave request. Please retry."
-      );
-    } finally {
-      setLeaveActionLoadingId("");
-    }
-  };
-
-  const handleReimbursementAction = async (id, status, remarks) => {
-    setReimbursementActionLoadingId(id);
-    setError("");
-    setSuccess("");
-
-    try {
-      await api.patch(`/reimbursements/${id}/review`, { status, remarks });
-      await loadReimbursementRequests();
-      setSuccess(`Reimbursement request ${status.toLowerCase()} successfully.`);
-    } catch (requestError) {
-      setError(
-        requestError.response?.data?.message ||
-          "Failed to review reimbursement request. Please retry."
-      );
-    } finally {
-      setReimbursementActionLoadingId("");
-    }
-  };
-
-  const filteredLeaves = useMemo(() => {
-    const normalizedQuery = leaveQuery.trim().toLowerCase();
-
-    return leaves.filter((leave) => {
-      const matchesStatus =
-        leaveStatusFilter === "All" ? true : leave.status === leaveStatusFilter;
-
-      const matchesQuery = normalizedQuery
-        ? String(leave.employee?.name || "")
-            .toLowerCase()
-            .includes(normalizedQuery) ||
-          String(leave.reason || "").toLowerCase().includes(normalizedQuery)
-        : true;
-
-      return matchesStatus && matchesQuery;
-    });
-  }, [leaveQuery, leaveStatusFilter, leaves]);
-
-  const filteredReimbursements = useMemo(() => {
-    const normalizedQuery = reimbursementQuery.trim().toLowerCase();
-
-    return reimbursements.filter((claim) => {
-      const matchesStatus =
-        reimbursementStatusFilter === "All"
-          ? true
-          : claim.status === reimbursementStatusFilter;
-
-      const matchesQuery = normalizedQuery
-        ? String(claim.employee?.name || "")
-            .toLowerCase()
-            .includes(normalizedQuery) ||
-          String(claim.title || "").toLowerCase().includes(normalizedQuery) ||
-          String(claim.description || "").toLowerCase().includes(normalizedQuery)
-        : true;
-
-      return matchesStatus && matchesQuery;
-    });
-  }, [reimbursementQuery, reimbursementStatusFilter, reimbursements]);
-
-  const handleLogout = async () => {
-    await logout();
-    navigate("/login", { replace: true });
-  };
-
-  return (
-    <div className="app-shell flex-col gap-4">
-      <Sidebar role={user.role} userName={user.name} onLogout={handleLogout} />
-
-      <main className="page-content flex-1 mt-4">
+const newMain = `<main className="page-content flex-1 mt-4">
         <section className="card p-6">
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div>
@@ -220,21 +31,21 @@ const ManagerDashboard = () => {
             <nav className="-mb-px flex space-x-8">
               <button
                 onClick={() => setActiveTab("Leaves")}
-                className={`whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium ${
+                className={\`whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium \${
                   activeTab === "Leaves"
                     ? "border-brand-500 text-brand-600"
                     : "border-transparent text-slate-500 hover:border-slate-300 hover:text-slate-700"
-                }`}
+                }\`}
               >
                 Leaves
               </button>
               <button
                 onClick={() => setActiveTab("Reimbursements")}
-                className={`whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium ${
+                className={\`whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium \${
                   activeTab === "Reimbursements"
                     ? "border-brand-500 text-brand-600"
                     : "border-transparent text-slate-500 hover:border-slate-300 hover:text-slate-700"
-                }`}
+                }\`}
               >
                 Reimbursements
               </button>
@@ -429,9 +240,7 @@ const ManagerDashboard = () => {
             </section>
           </>
         )}
-      </main>
-    </div>
-  );
-};
+      </main>`;
 
-export default ManagerDashboard;
+content = content.substring(0, mainStart) + newMain + content.substring(mainEnd);
+fs.writeFileSync(file, content, 'utf8');

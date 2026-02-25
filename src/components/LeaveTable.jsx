@@ -1,8 +1,8 @@
 const statusClassMap = {
-  Pending: "bg-amber-200 text-amber-800",
-  Approved: "bg-emerald-200 text-emerald-800",
-  Rejected: "bg-rose-200 text-rose-800",
-  Cancelled: "bg-gray-500 text-gray-300"
+  Pending: "bg-amber-100 text-amber-700",
+  Approved: "bg-emerald-100 text-emerald-700",
+  Rejected: "bg-rose-100 text-rose-700",
+  Cancelled: "bg-slate-100 text-slate-700"
 };
 
 const formatDate = (value) =>
@@ -26,7 +26,7 @@ const LeaveTable = ({
 }) => {
   if (leaves.length === 0) {
     return (
-      <div className="text-center py-8 text-gray-400">
+      <div className="text-center py-8 text-slate-500">
         No leave records found.
       </div>
     );
@@ -42,19 +42,19 @@ const LeaveTable = ({
           <div className="flex justify-between">
             <div className="space-y-1">
               {showEmployee && (
-                <p className="font-semibold text-gray-100">
+                <p className="font-semibold text-slate-900">
                   {leave.employee?.name || "-"}
                 </p>
               )}
-              <p className="text-sm text-gray-300">
+              <p className="text-sm text-slate-600">
                 {formatDate(leave.startDate)} - {formatDate(leave.endDate)}
               </p>
-              <p className="text-sm text-gray-300">Days: {leave.days}</p>
-              <p className="text-sm text-gray-300">Reason: {leave.reason}</p>
+              <p className="text-sm text-slate-600">Days: {leave.days}</p>
+              <p className="text-sm text-slate-600">Reason: {leave.reason}</p>
             </div>
             <span
               className={`status-pill ${
-                statusClassMap[leave.status] || "bg-gray-700 text-gray-200"
+                statusClassMap[leave.status] || "bg-slate-50 text-slate-700"
               }`}
             >
               {leave.status}

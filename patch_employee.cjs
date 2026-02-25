@@ -1,405 +1,18 @@
-import { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import LeaveCard from "../components/LeaveCard";
-import LeaveTable from "../components/LeaveTable";
-import ReimbursementTable from "../components/ReimbursementTable";
-import Sidebar from "../components/Sidebar";
-import { useAuth } from "../context/AuthContext";
-import api from "../services/api";
+const fs = require('fs');
+const file = './src/pages/EmployeeDashboard.jsx';
+let content = fs.readFileSync(file, 'utf8');
 
-const initialLeaveForm = {
-  startDate: "",
-  endDate: "",
-  reason: ""
-};
+// Add activeTab state
+content = content.replace(
+  'const [leaveQuery, setLeaveQuery] = useState("");',
+  'const [leaveQuery, setLeaveQuery] = useState("");\n  const [activeTab, setActiveTab] = useState("Leaves");'
+);
 
-const initialReimbursementForm = {
-  title: "",
-  category: "Travel",
-  amount: "",
-  expenseDate: "",
-  description: ""
-};
+// Replace the main content structure
+const mainStart = content.indexOf('<main className="page-content flex-1 mt-4">');
+const mainEnd = content.lastIndexOf('</main>') + 7;
 
-const defaultPolicy = {
-  annualLimitDays: 24,
-  maxRequestDays: 10,
-  maxPendingRequests: 3
-};
-
-const defaultLeaveSummary = {
-  year: new Date().getUTCFullYear(),
-  approvedDays: 0,
-  pendingDays: 0,
-  bookedDays: 0,
-  remainingDays: 24,
-  approvedRequests: 0,
-  pendingRequests: 0
-};
-
-const defaultReimbursementSummary = {
-  Pending: 0,
-  Approved: 0,
-  Rejected: 0,
-  Cancelled: 0,
-  totalAmount: 0,
-  approvedAmount: 0,
-  pendingAmount: 0
-};
-
-const defaultReimbursementCategories = [
-  "Travel",
-  "Food",
-  "Accommodation",
-  "Medical",
-  "Internet",
-  "Other"
-];
-
-const statusFilters = ["All", "Pending", "Approved", "Rejected", "Cancelled"];
-
-const calculateDays = (startDate, endDate) => {
-  if (!startDate || !endDate) {
-    return 0;
-  }
-
-  const start = new Date(startDate);
-  const end = new Date(endDate);
-
-  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()) || start > end) {
-    return 0;
-  }
-
-  const millisecondsPerDay = 24 * 60 * 60 * 1000;
-  return Math.floor((end.getTime() - start.getTime()) / millisecondsPerDay) + 1;
-};
-
-const formatCurrency = (amount) =>
-  new Intl.NumberFormat("en-IN", {
-    style: "currency",
-    currency: "INR",
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2
-  }).format(Number(amount || 0));
-
-const EmployeeDashboard = () => {
-  const navigate = useNavigate();
-  const { user, logout } = useAuth();
-
-  const [leaves, setLeaves] = useState([]);
-  const [policy, setPolicy] = useState(defaultPolicy);
-  const [leaveSummary, setLeaveSummary] = useState(defaultLeaveSummary);
-  const [leaveLoading, setLeaveLoading] = useState(true);
-  const [leaveSubmitting, setLeaveSubmitting] = useState(false);
-  const [leaveCancelLoadingId, setLeaveCancelLoadingId] = useState("");
-  const [leaveError, setLeaveError] = useState("");
-  const [leaveSuccess, setLeaveSuccess] = useState("");
-  const [showLeaveForm, setShowLeaveForm] = useState(false);
-  const [leaveForm, setLeaveForm] = useState(initialLeaveForm);
-  const [leaveStatusFilter, setLeaveStatusFilter] = useState("All");
-  const [leaveQuery, setLeaveQuery] = useState("");
-  const [activeTab, setActiveTab] = useState("Leaves");
-
-  const [reimbursements, setReimbursements] = useState([]);
-  const [reimbursementSummary, setReimbursementSummary] = useState(
-    defaultReimbursementSummary
-  );
-  const [reimbursementCategories, setReimbursementCategories] = useState(
-    defaultReimbursementCategories
-  );
-  const [reimbursementLoading, setReimbursementLoading] = useState(true);
-  const [reimbursementSubmitting, setReimbursementSubmitting] = useState(false);
-  const [reimbursementCancelLoadingId, setReimbursementCancelLoadingId] =
-    useState("");
-  const [reimbursementError, setReimbursementError] = useState("");
-  const [reimbursementSuccess, setReimbursementSuccess] = useState("");
-  const [showReimbursementForm, setShowReimbursementForm] = useState(false);
-  const [reimbursementForm, setReimbursementForm] = useState(
-    initialReimbursementForm
-  );
-  const [reimbursementStatusFilter, setReimbursementStatusFilter] =
-    useState("All");
-  const [reimbursementQuery, setReimbursementQuery] = useState("");
-
-  const loadLeaves = async () => {
-    setLeaveLoading(true);
-    setLeaveError("");
-
-    try {
-      const response = await api.get("/leaves/my");
-      setLeaves(response.data.data || []);
-      setPolicy(response.data.meta?.policy || defaultPolicy);
-      setLeaveSummary(response.data.meta?.summary || defaultLeaveSummary);
-    } catch (requestError) {
-      setLeaveError(
-        requestError.response?.data?.message ||
-          "Failed to load leave history. Try again."
-      );
-    } finally {
-      setLeaveLoading(false);
-    }
-  };
-
-  const loadReimbursements = async () => {
-    setReimbursementLoading(true);
-    setReimbursementError("");
-
-    try {
-      const response = await api.get("/reimbursements/my");
-      setReimbursements(response.data.data || []);
-      setReimbursementSummary(
-        response.data.meta?.summary || defaultReimbursementSummary
-      );
-      setReimbursementCategories(
-        response.data.meta?.reimbursement?.categories ||
-          defaultReimbursementCategories
-      );
-    } catch (requestError) {
-      setReimbursementError(
-        requestError.response?.data?.message ||
-          "Failed to load reimbursements. Try again."
-      );
-    } finally {
-      setReimbursementLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    const loadEmployeeData = async () => {
-      await Promise.all([loadLeaves(), loadReimbursements()]);
-    };
-
-    loadEmployeeData();
-  }, []);
-
-  const leaveRequestSummary = useMemo(() => {
-    const pending = leaves.filter((leave) => leave.status === "Pending").length;
-    const approved = leaves.filter((leave) => leave.status === "Approved").length;
-    const rejected = leaves.filter((leave) => leave.status === "Rejected").length;
-    const cancelled = leaves.filter((leave) => leave.status === "Cancelled").length;
-
-    return {
-      total: leaves.length,
-      pending,
-      approved,
-      rejected,
-      cancelled
-    };
-  }, [leaves]);
-
-  const requestedDays = useMemo(
-    () => calculateDays(leaveForm.startDate, leaveForm.endDate),
-    [leaveForm.startDate, leaveForm.endDate]
-  );
-
-  const balanceUtilization = useMemo(() => {
-    if (!policy.annualLimitDays) {
-      return 0;
-    }
-
-    return Math.min(
-      Math.round((leaveSummary.bookedDays / policy.annualLimitDays) * 100),
-      100
-    );
-  }, [leaveSummary.bookedDays, policy.annualLimitDays]);
-
-  const filteredLeaves = useMemo(() => {
-    const normalizedQuery = leaveQuery.trim().toLowerCase();
-
-    return leaves.filter((leave) => {
-      const matchesStatus =
-        leaveStatusFilter === "All" ? true : leave.status === leaveStatusFilter;
-
-      const matchesQuery = normalizedQuery
-        ? leave.reason.toLowerCase().includes(normalizedQuery)
-        : true;
-
-      return matchesStatus && matchesQuery;
-    });
-  }, [leaveQuery, leaveStatusFilter, leaves]);
-
-  const filteredReimbursements = useMemo(() => {
-    const normalizedQuery = reimbursementQuery.trim().toLowerCase();
-
-    return reimbursements.filter((claim) => {
-      const matchesStatus =
-        reimbursementStatusFilter === "All"
-          ? true
-          : claim.status === reimbursementStatusFilter;
-
-      const matchesQuery = normalizedQuery
-        ? String(claim.title || "").toLowerCase().includes(normalizedQuery) ||
-          String(claim.category || "").toLowerCase().includes(normalizedQuery) ||
-          String(claim.description || "").toLowerCase().includes(normalizedQuery)
-        : true;
-
-      return matchesStatus && matchesQuery;
-    });
-  }, [reimbursementQuery, reimbursementStatusFilter, reimbursements]);
-
-  const onLeaveChange = (event) => {
-    const { name, value } = event.target;
-    setLeaveForm((current) => ({ ...current, [name]: value }));
-  };
-
-  const onReimbursementChange = (event) => {
-    const { name, value } = event.target;
-    setReimbursementForm((current) => ({ ...current, [name]: value }));
-  };
-
-  const onLeaveSubmit = async (event) => {
-    event.preventDefault();
-    setLeaveError("");
-    setLeaveSuccess("");
-
-    if (requestedDays === 0) {
-      setLeaveError("Please select a valid leave duration.");
-      return;
-    }
-
-    if (requestedDays > policy.maxRequestDays) {
-      setLeaveError(`A request cannot exceed ${policy.maxRequestDays} day(s).`);
-      return;
-    }
-
-    if (leaveSummary.pendingRequests >= policy.maxPendingRequests) {
-      setLeaveError(
-        `You already have ${policy.maxPendingRequests} pending request(s). Resolve one before applying again.`
-      );
-      return;
-    }
-
-    if (requestedDays > leaveSummary.remainingDays) {
-      setLeaveError(
-        `Insufficient leave balance. You have ${leaveSummary.remainingDays} day(s) remaining.`
-      );
-      return;
-    }
-
-    setLeaveSubmitting(true);
-
-    try {
-      await api.post("/leaves", leaveForm);
-      setLeaveForm(initialLeaveForm);
-      setShowLeaveForm(false);
-      setLeaveSuccess("Leave request submitted successfully.");
-      await loadLeaves();
-    } catch (requestError) {
-      setLeaveError(
-        requestError.response?.data?.message ||
-          "Could not submit leave request. Check your form and try again."
-      );
-    } finally {
-      setLeaveSubmitting(false);
-    }
-  };
-
-  const onReimbursementSubmit = async (event) => {
-    event.preventDefault();
-    setReimbursementError("");
-    setReimbursementSuccess("");
-
-    if (reimbursementForm.title.trim().length < 3) {
-      setReimbursementError("Title must be at least 3 characters.");
-      return;
-    }
-
-    const amount = Number(reimbursementForm.amount);
-    if (!Number.isFinite(amount) || amount <= 0) {
-      setReimbursementError("Enter a valid amount greater than 0.");
-      return;
-    }
-
-    if (!reimbursementForm.expenseDate) {
-      setReimbursementError("Expense date is required.");
-      return;
-    }
-
-    if (new Date(reimbursementForm.expenseDate).getTime() > new Date().getTime()) {
-      setReimbursementError("Expense date cannot be in the future.");
-      return;
-    }
-
-    if (reimbursementForm.description.trim().length < 5) {
-      setReimbursementError("Description must be at least 5 characters.");
-      return;
-    }
-
-    setReimbursementSubmitting(true);
-
-    try {
-      await api.post("/reimbursements", {
-        ...reimbursementForm,
-        title: reimbursementForm.title.trim(),
-        amount,
-        description: reimbursementForm.description.trim()
-      });
-      setReimbursementForm(initialReimbursementForm);
-      setShowReimbursementForm(false);
-      setReimbursementSuccess("Reimbursement request submitted successfully.");
-      await loadReimbursements();
-    } catch (requestError) {
-      setReimbursementError(
-        requestError.response?.data?.message ||
-          "Could not submit reimbursement request. Check your form and try again."
-      );
-    } finally {
-      setReimbursementSubmitting(false);
-    }
-  };
-
-  const handleCancelLeaveRequest = async (leaveId) => {
-    setLeaveCancelLoadingId(leaveId);
-    setLeaveError("");
-    setLeaveSuccess("");
-
-    try {
-      await api.patch(`/leaves/${leaveId}/cancel`);
-      setLeaveSuccess("Leave request cancelled.");
-      await loadLeaves();
-    } catch (requestError) {
-      setLeaveError(
-        requestError.response?.data?.message ||
-          "Could not cancel this leave request."
-      );
-    } finally {
-      setLeaveCancelLoadingId("");
-    }
-  };
-
-  const handleCancelReimbursementRequest = async (claimId) => {
-    setReimbursementCancelLoadingId(claimId);
-    setReimbursementError("");
-    setReimbursementSuccess("");
-
-    try {
-      await api.patch(`/reimbursements/${claimId}/cancel`);
-      setReimbursementSuccess("Reimbursement request cancelled.");
-      await loadReimbursements();
-    } catch (requestError) {
-      setReimbursementError(
-        requestError.response?.data?.message ||
-          "Could not cancel this reimbursement request."
-      );
-    } finally {
-      setReimbursementCancelLoadingId("");
-    }
-  };
-
-  const handleRefreshAll = async () => {
-    await Promise.all([loadLeaves(), loadReimbursements()]);
-  };
-
-  const handleLogout = async () => {
-    await logout();
-    navigate("/login", { replace: true });
-  };
-
-  return (
-    <div className="app-shell flex-col gap-4">
-      <Sidebar role={user.role} userName={user.name} onLogout={handleLogout} />
-
-      <main className="page-content flex-1 mt-4">
+const newMain = `<main className="page-content flex-1 mt-4">
         <section className="card p-6">
           <div className="grid gap-5 lg:grid-cols-[1.3fr_1fr]">
             <div>
@@ -422,7 +35,7 @@ const EmployeeDashboard = () => {
               <div className="mt-2 h-2 rounded-full bg-slate-200">
                 <div
                   className="h-2 rounded-full bg-brand-500 transition-all duration-300"
-                  style={{ width: `${balanceUtilization}%` }}
+                  style={{ width: \`\${balanceUtilization}%\` }}
                 />
               </div>
               <p className="mt-2 text-xs text-slate-500">
@@ -435,21 +48,21 @@ const EmployeeDashboard = () => {
             <nav className="-mb-px flex space-x-8">
               <button
                 onClick={() => setActiveTab("Leaves")}
-                className={`whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium ${
+                className={\`whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium \${
                   activeTab === "Leaves"
                     ? "border-brand-500 text-brand-600"
                     : "border-transparent text-slate-500 hover:border-slate-300 hover:text-slate-700"
-                }`}
+                }\`}
               >
                 Leaves
               </button>
               <button
                 onClick={() => setActiveTab("Reimbursements")}
-                className={`whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium ${
+                className={\`whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium \${
                   activeTab === "Reimbursements"
                     ? "border-brand-500 text-brand-600"
                     : "border-transparent text-slate-500 hover:border-slate-300 hover:text-slate-700"
-                }`}
+                }\`}
               >
                 Reimbursements
               </button>
@@ -694,14 +307,14 @@ const EmployeeDashboard = () => {
                 title="Approved"
                 value={leaveRequestSummary.approved}
                 accentClass="text-emerald-600"
-                subtitle={`${leaveSummary.approvedDays} approved day(s) this year`}
+                subtitle={\`\${leaveSummary.approvedDays} approved day(s) this year\`}
                 icon="AP"
               />
               <LeaveCard
                 title="Balance"
                 value={leaveSummary.remainingDays}
                 accentClass="text-brand-700"
-                subtitle={`${policy.annualLimitDays} annual day(s)`}
+                subtitle={\`\${policy.annualLimitDays} annual day(s)\`}
                 icon="BL"
               />
             </section>
@@ -840,9 +453,7 @@ const EmployeeDashboard = () => {
             </section>
           </>
         )}
-      </main>
-    </div>
-  );
-};
+      </main>`;
 
-export default EmployeeDashboard;
+content = content.substring(0, mainStart) + newMain + content.substring(mainEnd);
+fs.writeFileSync(file, content, 'utf8');
