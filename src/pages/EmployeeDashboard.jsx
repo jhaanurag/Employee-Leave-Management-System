@@ -1,0 +1,846 @@
+import { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import LeaveCard from "../components/LeaveCard";
+import LeaveTable from "../components/LeaveTable";
+import ReimbursementTable from "../components/ReimbursementTable";
+import Sidebar from "../components/Sidebar";
+import { useAuth } from "../context/AuthContext";
+import api from "../services/api";
+
+const initialLeaveForm = {
+  startDate: "",
+  endDate: "",
+  reason: ""
+};
+
+const initialReimbursementForm = {
+  title: "",
+  category: "Travel",
+  amount: "",
+  expenseDate: "",
+  description: ""
+};
+
+const defaultPolicy = {
+  annualLimitDays: 24,
+  maxRequestDays: 10,
+  maxPendingRequests: 3
+};
+
+const defaultLeaveSummary = {
+  year: new Date().getUTCFullYear(),
+  approvedDays: 0,
+  pendingDays: 0,
+  bookedDays: 0,
+  remainingDays: 24,
+  approvedRequests: 0,
+  pendingRequests: 0
+};
+
+const defaultReimbursementSummary = {
+  Pending: 0,
+  Approved: 0,
+  Rejected: 0,
+  Cancelled: 0,
+  totalAmount: 0,
+  approvedAmount: 0,
+  pendingAmount: 0
+};
+
+const defaultReimbursementCategories = [
+  "Travel",
+  "Food",
+  "Accommodation",
+  "Medical",
+  "Internet",
+  "Other"
+];
+
+const statusFilters = ["All", "Pending", "Approved", "Rejected", "Cancelled"];
+
+const calculateDays = (startDate, endDate) => {
+  if (!startDate || !endDate) {
+    return 0;
+  }
+
+  const start = new Date(startDate);
+  const end = new Date(endDate);
+
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()) || start > end) {
+    return 0;
+  }
+
+  const millisecondsPerDay = 24 * 60 * 60 * 1000;
+  return Math.floor((end.getTime() - start.getTime()) / millisecondsPerDay) + 1;
+};
+
+const formatCurrency = (amount) =>
+  new Intl.NumberFormat("en-IN", {
+    style: "currency",
+    currency: "INR",
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  }).format(Number(amount || 0));
+
+const EmployeeDashboard = () => {
+  const navigate = useNavigate();
+  const { user, logout } = useAuth();
+
+  const [leaves, setLeaves] = useState([]);
+  const [policy, setPolicy] = useState(defaultPolicy);
+  const [leaveSummary, setLeaveSummary] = useState(defaultLeaveSummary);
+  const [leaveLoading, setLeaveLoading] = useState(true);
+  const [leaveSubmitting, setLeaveSubmitting] = useState(false);
+  const [leaveCancelLoadingId, setLeaveCancelLoadingId] = useState("");
+  const [leaveError, setLeaveError] = useState("");
+  const [leaveSuccess, setLeaveSuccess] = useState("");
+  const [showLeaveForm, setShowLeaveForm] = useState(false);
+  const [leaveForm, setLeaveForm] = useState(initialLeaveForm);
+  const [leaveStatusFilter, setLeaveStatusFilter] = useState("All");
+  const [leaveQuery, setLeaveQuery] = useState("");
+
+  const [reimbursements, setReimbursements] = useState([]);
+  const [reimbursementSummary, setReimbursementSummary] = useState(
+    defaultReimbursementSummary
+  );
+  const [reimbursementCategories, setReimbursementCategories] = useState(
+    defaultReimbursementCategories
+  );
+  const [reimbursementLoading, setReimbursementLoading] = useState(true);
+  const [reimbursementSubmitting, setReimbursementSubmitting] = useState(false);
+  const [reimbursementCancelLoadingId, setReimbursementCancelLoadingId] =
+    useState("");
+  const [reimbursementError, setReimbursementError] = useState("");
+  const [reimbursementSuccess, setReimbursementSuccess] = useState("");
+  const [showReimbursementForm, setShowReimbursementForm] = useState(false);
+  const [reimbursementForm, setReimbursementForm] = useState(
+    initialReimbursementForm
+  );
+  const [reimbursementStatusFilter, setReimbursementStatusFilter] =
+    useState("All");
+  const [reimbursementQuery, setReimbursementQuery] = useState("");
+
+  // toggle which section is visible
+  const [activeSection, setActiveSection] = useState("leave");
+
+  const loadLeaves = async () => {
+    setLeaveLoading(true);
+    setLeaveError("");
+
+    try {
+      const response = await api.get("/leaves/my");
+      setLeaves(response.data.data || []);
+      setPolicy(response.data.meta?.policy || defaultPolicy);
+      setLeaveSummary(response.data.meta?.summary || defaultLeaveSummary);
+    } catch (requestError) {
+      setLeaveError(
+        requestError.response?.data?.message ||
+          "Failed to load leave history. Try again."
+      );
+    } finally {
+      setLeaveLoading(false);
+    }
+  };
+
+  const loadReimbursements = async () => {
+    setReimbursementLoading(true);
+    setReimbursementError("");
+
+    try {
+      const response = await api.get("/reimbursements/my");
+      setReimbursements(response.data.data || []);
+      setReimbursementSummary(
+        response.data.meta?.summary || defaultReimbursementSummary
+      );
+      setReimbursementCategories(
+        response.data.meta?.reimbursement?.categories ||
+          defaultReimbursementCategories
+      );
+    } catch (requestError) {
+      setReimbursementError(
+        requestError.response?.data?.message ||
+          "Failed to load reimbursements. Try again."
+      );
+    } finally {
+      setReimbursementLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    const loadEmployeeData = async () => {
+      await Promise.all([loadLeaves(), loadReimbursements()]);
+    };
+
+    loadEmployeeData();
+  }, []);
+
+  const leaveRequestSummary = useMemo(() => {
+    const pending = leaves.filter((leave) => leave.status === "Pending").length;
+    const approved = leaves.filter((leave) => leave.status === "Approved").length;
+    const rejected = leaves.filter((leave) => leave.status === "Rejected").length;
+    const cancelled = leaves.filter((leave) => leave.status === "Cancelled").length;
+
+    return {
+      total: leaves.length,
+      pending,
+      approved,
+      rejected,
+      cancelled
+    };
+  }, [leaves]);
+
+  const requestedDays = useMemo(
+    () => calculateDays(leaveForm.startDate, leaveForm.endDate),
+    [leaveForm.startDate, leaveForm.endDate]
+  );
+
+  const balanceUtilization = useMemo(() => {
+    if (!policy.annualLimitDays) {
+      return 0;
+    }
+
+    return Math.min(
+      Math.round((leaveSummary.bookedDays / policy.annualLimitDays) * 100),
+      100
+    );
+  }, [leaveSummary.bookedDays, policy.annualLimitDays]);
+
+  const filteredLeaves = useMemo(() => {
+    const normalizedQuery = leaveQuery.trim().toLowerCase();
+
+    return leaves.filter((leave) => {
+      const matchesStatus =
+        leaveStatusFilter === "All" ? true : leave.status === leaveStatusFilter;
+
+      const matchesQuery = normalizedQuery
+        ? leave.reason.toLowerCase().includes(normalizedQuery)
+        : true;
+
+      return matchesStatus && matchesQuery;
+    });
+  }, [leaveQuery, leaveStatusFilter, leaves]);
+
+  const filteredReimbursements = useMemo(() => {
+    const normalizedQuery = reimbursementQuery.trim().toLowerCase();
+
+    return reimbursements.filter((claim) => {
+      const matchesStatus =
+        reimbursementStatusFilter === "All"
+          ? true
+          : claim.status === reimbursementStatusFilter;
+
+      const matchesQuery = normalizedQuery
+        ? String(claim.title || "").toLowerCase().includes(normalizedQuery) ||
+          String(claim.category || "").toLowerCase().includes(normalizedQuery) ||
+          String(claim.description || "").toLowerCase().includes(normalizedQuery)
+        : true;
+
+      return matchesStatus && matchesQuery;
+    });
+  }, [reimbursementQuery, reimbursementStatusFilter, reimbursements]);
+
+  const onLeaveChange = (event) => {
+    const { name, value } = event.target;
+    setLeaveForm((current) => ({ ...current, [name]: value }));
+  };
+
+  const onReimbursementChange = (event) => {
+    const { name, value } = event.target;
+    setReimbursementForm((current) => ({ ...current, [name]: value }));
+  };
+
+  const onLeaveSubmit = async (event) => {
+    event.preventDefault();
+    setLeaveError("");
+    setLeaveSuccess("");
+
+    if (requestedDays === 0) {
+      setLeaveError("Please select a valid leave duration.");
+      return;
+    }
+
+    if (requestedDays > policy.maxRequestDays) {
+      setLeaveError(`A request cannot exceed ${policy.maxRequestDays} day(s).`);
+      return;
+    }
+
+    if (leaveSummary.pendingRequests >= policy.maxPendingRequests) {
+      setLeaveError(
+        `You already have ${policy.maxPendingRequests} pending request(s). Resolve one before applying again.`
+      );
+      return;
+    }
+
+    if (requestedDays > leaveSummary.remainingDays) {
+      setLeaveError(
+        `Insufficient leave balance. You have ${leaveSummary.remainingDays} day(s) remaining.`
+      );
+      return;
+    }
+
+    setLeaveSubmitting(true);
+
+    try {
+      await api.post("/leaves", leaveForm);
+      setLeaveForm(initialLeaveForm);
+      setShowLeaveForm(false);
+      setLeaveSuccess("Leave request submitted successfully.");
+      await loadLeaves();
+    } catch (requestError) {
+      setLeaveError(
+        requestError.response?.data?.message ||
+          "Could not submit leave request. Check your form and try again."
+      );
+    } finally {
+      setLeaveSubmitting(false);
+    }
+  };
+
+  const onReimbursementSubmit = async (event) => {
+    event.preventDefault();
+    setReimbursementError("");
+    setReimbursementSuccess("");
+
+    if (reimbursementForm.title.trim().length < 3) {
+      setReimbursementError("Title must be at least 3 characters.");
+      return;
+    }
+
+    const amount = Number(reimbursementForm.amount);
+    if (!Number.isFinite(amount) || amount <= 0) {
+      setReimbursementError("Enter a valid amount greater than 0.");
+      return;
+    }
+
+    if (!reimbursementForm.expenseDate) {
+      setReimbursementError("Expense date is required.");
+      return;
+    }
+
+    if (new Date(reimbursementForm.expenseDate).getTime() > new Date().getTime()) {
+      setReimbursementError("Expense date cannot be in the future.");
+      return;
+    }
+
+    if (reimbursementForm.description.trim().length < 5) {
+      setReimbursementError("Description must be at least 5 characters.");
+      return;
+    }
+
+    setReimbursementSubmitting(true);
+
+    try {
+      await api.post("/reimbursements", {
+        ...reimbursementForm,
+        title: reimbursementForm.title.trim(),
+        amount,
+        description: reimbursementForm.description.trim()
+      });
+      setReimbursementForm(initialReimbursementForm);
+      setShowReimbursementForm(false);
+      setReimbursementSuccess("Reimbursement request submitted successfully.");
+      await loadReimbursements();
+    } catch (requestError) {
+      setReimbursementError(
+        requestError.response?.data?.message ||
+          "Could not submit reimbursement request. Check your form and try again."
+      );
+    } finally {
+      setReimbursementSubmitting(false);
+    }
+  };
+
+  const handleCancelLeaveRequest = async (leaveId) => {
+    setLeaveCancelLoadingId(leaveId);
+    setLeaveError("");
+    setLeaveSuccess("");
+
+    try {
+      await api.patch(`/leaves/${leaveId}/cancel`);
+      setLeaveSuccess("Leave request cancelled.");
+      await loadLeaves();
+    } catch (requestError) {
+      setLeaveError(
+        requestError.response?.data?.message ||
+          "Could not cancel this leave request."
+      );
+    } finally {
+      setLeaveCancelLoadingId("");
+    }
+  };
+
+  const handleCancelReimbursementRequest = async (claimId) => {
+    setReimbursementCancelLoadingId(claimId);
+    setReimbursementError("");
+    setReimbursementSuccess("");
+
+    try {
+      await api.patch(`/reimbursements/${claimId}/cancel`);
+      setReimbursementSuccess("Reimbursement request cancelled.");
+      await loadReimbursements();
+    } catch (requestError) {
+      setReimbursementError(
+        requestError.response?.data?.message ||
+          "Could not cancel this reimbursement request."
+      );
+    } finally {
+      setReimbursementCancelLoadingId("");
+    }
+  };
+
+  const handleRefreshAll = async () => {
+    await Promise.all([loadLeaves(), loadReimbursements()]);
+  };
+
+  const handleLogout = async () => {
+    await logout();
+    navigate("/login", { replace: true });
+  };
+
+  return (
+    <div className="app-shell flex-col gap-4">
+      <Sidebar role={user.role} userName={user.name} onLogout={handleLogout} />
+
+      <main className="page-content flex-1 mt-4">
+        <section className="card p-6">
+          <div className="grid gap-5 lg:grid-cols-[1.3fr_1fr]">
+            <div>
+              <p className="page-kicker">Employee Dashboard</p>
+              <h2 className="mt-2 page-title">Welcome back, {user.name}</h2>
+              <p className="mt-2 text-sm text-gray-400">
+                Manage leave requests and reimbursement claims from one workspace.
+              </p>
+            </div>
+
+            <div className="card-muted p-4">
+              <div className="flex items-center justify-between text-sm font-semibold">
+                <span className="text-gray-400">
+                  Annual Leave Balance ({leaveSummary.year})
+                </span>
+                <span className="text-gray-100">
+                  {leaveSummary.remainingDays}/{policy.annualLimitDays} days left
+                </span>
+              </div>
+              <div className="mt-2 h-2 rounded-full bg-white">
+                <div
+                  className="h-2 rounded-full bg-brand-500 transition-all duration-300"
+                  style={{ width: `${balanceUtilization}%` }}
+                />
+              </div>
+              <p className="mt-2 text-xs text-slate-500">
+                Max {policy.maxRequestDays} day(s) per request, {policy.maxPendingRequests} pending request(s) allowed.
+              </p>
+            </div>
+          </div>
+
+          <div className="mt-5 flex flex-wrap gap-3">
+            <button
+              className="btn-primary"
+              onClick={() => setShowLeaveForm((current) => !current)}
+              type="button"
+            >
+              {showLeaveForm ? "Close Leave Form" : "Apply Leave"}
+            </button>
+            <button
+              className="btn-secondary"
+              onClick={() => setShowReimbursementForm((current) => !current)}
+              type="button"
+            >
+              {showReimbursementForm ? "Close Reimbursement Form" : "Claim Reimbursement"}
+            </button>
+            <button className="btn-secondary" onClick={handleRefreshAll} type="button">
+              Refresh All
+            </button>
+          </div>
+
+          {showLeaveForm ? (
+            <form
+              className="mt-6 grid gap-4 rounded-2xl border border-gray-600 bg-gray-800/50 p-4 md:grid-cols-2"
+              onSubmit={onLeaveSubmit}
+            >
+              <div className="md:col-span-2">
+                <h3 className="text-base font-bold text-gray-100">New Leave Request</h3>
+                <p className="mt-1 text-xs text-slate-500">
+                  Tip: apply early to get quicker approval.
+                </p>
+              </div>
+              <div>
+                <label className="mb-1 block text-sm font-semibold text-slate-700">
+                  Start Date
+                </label>
+                <input
+                  type="date"
+                  name="startDate"
+                  className="input-field"
+                  value={leaveForm.startDate}
+                  onChange={onLeaveChange}
+                  min={new Date().toISOString().slice(0, 10)}
+                  required
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-sm font-semibold text-slate-700">
+                  End Date
+                </label>
+                <input
+                  type="date"
+                  name="endDate"
+                  className="input-field"
+                  value={leaveForm.endDate}
+                  onChange={onLeaveChange}
+                  min={leaveForm.startDate || new Date().toISOString().slice(0, 10)}
+                  required
+                />
+              </div>
+              <div className="md:col-span-2">
+                <label className="mb-1 block text-sm font-semibold text-slate-700">
+                  Reason
+                </label>
+                <textarea
+                  name="reason"
+                  rows="3"
+                  className="input-field"
+                  placeholder="Explain the leave request reason..."
+                  value={leaveForm.reason}
+                  onChange={onLeaveChange}
+                  minLength={5}
+                  maxLength={500}
+                  required
+                />
+                <p className="mt-2 text-xs font-semibold text-gray-400">
+                  Requested duration: {requestedDays || 0} day(s)
+                </p>
+              </div>
+              <div className="md:col-span-2">
+                <button className="btn-primary" type="submit" disabled={leaveSubmitting}>
+                  {leaveSubmitting ? "Submitting..." : "Submit Leave Request"}
+                </button>
+              </div>
+            </form>
+          ) : null}
+
+          {showReimbursementForm ? (
+            <form
+              className="mt-6 grid gap-4 rounded-2xl border border-gray-600 bg-gray-800/50 p-4 md:grid-cols-2"
+              onSubmit={onReimbursementSubmit}
+            >
+              <div className="md:col-span-2">
+                <h3 className="text-base font-bold text-gray-100">New Reimbursement Claim</h3>
+                <p className="mt-1 text-xs text-slate-500">
+                  Submit your expense details for manager review.
+                </p>
+              </div>
+              <div>
+                <label className="mb-1 block text-sm font-semibold text-slate-700">
+                  Title
+                </label>
+                <input
+                  type="text"
+                  name="title"
+                  className="input-field"
+                  placeholder="Cab fare to client site"
+                  value={reimbursementForm.title}
+                  onChange={onReimbursementChange}
+                  minLength={3}
+                  maxLength={120}
+                  required
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-sm font-semibold text-slate-700">
+                  Category
+                </label>
+                <select
+                  name="category"
+                  className="input-field"
+                  value={reimbursementForm.category}
+                  onChange={onReimbursementChange}
+                >
+                  {reimbursementCategories.map((category) => (
+                    <option key={category} value={category}>
+                      {category}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="mb-1 block text-sm font-semibold text-slate-700">
+                  Amount
+                </label>
+                <input
+                  type="number"
+                  name="amount"
+                  className="input-field"
+                  placeholder="₹0.00"
+                  value={reimbursementForm.amount}
+                  onChange={onReimbursementChange}
+                  min="0.01"
+                  step="0.01"
+                  required
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-sm font-semibold text-slate-700">
+                  Expense Date
+                </label>
+                <input
+                  type="date"
+                  name="expenseDate"
+                  className="input-field"
+                  value={reimbursementForm.expenseDate}
+                  onChange={onReimbursementChange}
+                  max={new Date().toISOString().slice(0, 10)}
+                  required
+                />
+              </div>
+              <div className="md:col-span-2">
+                <label className="mb-1 block text-sm font-semibold text-slate-700">
+                  Description
+                </label>
+                <textarea
+                  name="description"
+                  rows="3"
+                  className="input-field"
+                  placeholder="Add details for this expense..."
+                  value={reimbursementForm.description}
+                  onChange={onReimbursementChange}
+                  minLength={5}
+                  maxLength={500}
+                  required
+                />
+              </div>
+              <div className="md:col-span-2">
+                <button
+                  className="btn-primary"
+                  type="submit"
+                  disabled={reimbursementSubmitting}
+                >
+                  {reimbursementSubmitting ? "Submitting..." : "Submit Reimbursement"}
+                </button>
+              </div>
+            </form>
+          ) : null}
+
+          {leaveSuccess ? (
+            <div className="mt-4 rounded-xl border border-emerald-600 bg-emerald-800 px-4 py-3 text-sm font-semibold text-emerald-100">
+              {leaveSuccess}
+            </div>
+          ) : null}
+
+          {leaveError ? (
+            <div className="mt-4 rounded-xl border border-rose-600 bg-rose-800 px-4 py-3 text-sm font-semibold text-rose-100">
+              {leaveError}
+            </div>
+          ) : null}
+
+          {reimbursementSuccess ? (
+            <div className="mt-4 rounded-xl border border-emerald-600 bg-emerald-800 px-4 py-3 text-sm font-semibold text-emerald-100">
+              {reimbursementSuccess}
+            </div>
+          ) : null}
+
+          {reimbursementError ? (
+            <div className="mt-4 rounded-xl border border-rose-600 bg-rose-800 px-4 py-3 text-sm font-semibold text-rose-100">
+              {reimbursementError}
+            </div>
+          ) : null}
+        </section>
+
+        {/* tabs to switch between leave and reimbursement */}
+        <section className="card p-4">
+          <div className="flex gap-4">
+            <button
+              className={
+                activeSection === "leave" ? "btn-primary" : "btn-secondary"
+              }
+              onClick={() => setActiveSection("leave")}
+              type="button"
+            >
+              Leaves
+            </button>
+            <button
+              className={
+                activeSection === "reimbursement" ? "btn-primary" : "btn-secondary"
+              }
+              onClick={() => setActiveSection("reimbursement")}
+              type="button"
+            >
+              Reimbursements
+            </button>
+          </div>
+        </section>
+
+        {activeSection === "leave" && (
+          <>
+            <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              <LeaveCard
+                title="Total Requests"
+            value={leaveRequestSummary.total}
+            accentClass="text-gray-100"
+            subtitle="All time"
+            icon="TR"
+          />
+          <LeaveCard
+            title="Pending"
+            value={leaveRequestSummary.pending}
+            accentClass="text-amber-600"
+            subtitle="Awaiting review"
+            icon="PD"
+          />
+          <LeaveCard
+            title="Approved"
+            value={leaveRequestSummary.approved}
+            accentClass="text-emerald-600"
+            subtitle={`${leaveSummary.approvedDays} approved day(s) this year`}
+            icon="AP"
+          />
+          <LeaveCard
+            title="Balance"
+            value={leaveSummary.remainingDays}
+            accentClass="text-brand-700"
+            subtitle={`${policy.annualLimitDays} annual day(s)`}
+            icon="BL"
+          />
+        </section>
+
+        <section className="card p-4">
+          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            <div className="flex flex-wrap gap-2">
+              {statusFilters.map((filter) => (
+                <button
+                  key={filter}
+                  type="button"
+                  className={
+                    leaveStatusFilter === filter
+                      ? "rounded-full bg-brand-500 px-3 py-1.5 text-xs font-bold text-white"
+                      : "rounded-full bg-gray-700 px-3 py-1.5 text-xs font-bold text-gray-300 hover:bg-gray-600"
+                  }
+                  onClick={() => setLeaveStatusFilter(filter)}
+                >
+                  {filter}
+                </button>
+              ))}
+            </div>
+            <input
+              type="text"
+              className="input-field md:max-w-xs"
+              placeholder="Search leave by reason"
+              value={leaveQuery}
+              onChange={(event) => setLeaveQuery(event.target.value)}
+            />
+          </div>
+        </section>
+
+        <section>
+          <div className="mb-3 flex items-center justify-between">
+            <h3 className="text-lg font-extrabold text-gray-100">Leave History</h3>
+            <p className="text-xs font-semibold text-slate-500">
+              Showing {filteredLeaves.length} of {leaves.length} request(s)
+            </p>
+          </div>
+          {leaveLoading ? (
+            <div className="card px-6 py-4 text-sm font-semibold text-slate-600">
+              Loading leave records...
+            </div>
+          ) : (
+            <LeaveTable
+              leaves={filteredLeaves}
+              canCancel
+              cancelLoadingId={leaveCancelLoadingId}
+              onCancel={handleCancelLeaveRequest}
+            />
+          )}
+        </section>
+
+        </section>
+          </>
+        )}
+        {activeSection === "reimbursement" && (
+          <>
+            <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              <LeaveCard
+                title="Reimbursement Claims"
+            value={reimbursements.length}
+            accentClass="text-gray-100"
+            subtitle="All time"
+            icon="RC"
+          />
+          <LeaveCard
+            title="Pending Claims"
+            value={reimbursementSummary.Pending}
+            accentClass="text-amber-600"
+            subtitle="Awaiting manager review"
+            icon="PC"
+          />
+          <LeaveCard
+            title="Approved Amount"
+            value={formatCurrency(reimbursementSummary.approvedAmount)}
+            accentClass="text-emerald-600"
+            subtitle="Total approved"
+            icon="AA"
+          />
+          <LeaveCard
+            title="Pending Amount"
+            value={formatCurrency(reimbursementSummary.pendingAmount)}
+            accentClass="text-brand-700"
+            subtitle="Under review"
+            icon="PA"
+          />
+        </section>
+
+        <section className="card p-4">
+          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            <div className="flex flex-wrap gap-2">
+              {statusFilters.map((filter) => (
+                <button
+                  key={filter}
+                  type="button"
+                  className={
+                    reimbursementStatusFilter === filter
+                      ? "rounded-full bg-brand-500 px-3 py-1.5 text-xs font-bold text-white"
+                      : "rounded-full bg-gray-700 px-3 py-1.5 text-xs font-bold text-gray-300 hover:bg-gray-600"
+                  }
+                  onClick={() => setReimbursementStatusFilter(filter)}
+                >
+                  {filter}
+                </button>
+              ))}
+            </div>
+            <input
+              type="text"
+              className="input-field md:max-w-xs"
+              placeholder="Search reimbursement"
+              value={reimbursementQuery}
+              onChange={(event) => setReimbursementQuery(event.target.value)}
+            />
+          </div>
+        </section>
+
+        <section>
+          <div className="mb-3 flex items-center justify-between">
+            <h3 className="text-lg font-extrabold text-gray-100">Reimbursement History</h3>
+            <p className="text-xs font-semibold text-slate-500">
+              Showing {filteredReimbursements.length} of {reimbursements.length} claim(s)
+            </p>
+          </div>
+          {reimbursementLoading ? (
+            <div className="card px-6 py-4 text-sm font-semibold text-slate-600">
+              Loading reimbursement records...
+            </div>
+          ) : (
+            <ReimbursementTable
+              reimbursements={filteredReimbursements}
+              canCancel
+              cancelLoadingId={reimbursementCancelLoadingId}
+              onCancel={handleCancelReimbursementRequest}
+            />
+          )}
+        </section>
+          </>
+        )}
+      </main>
+    </div>
+  );
+};
+
+export default EmployeeDashboard;

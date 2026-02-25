@@ -1,0 +1,94 @@
+@import url("https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Sora:wght@600;700;800&display=swap");
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* dark theme variables */
+    --bg: #1a1a2e;
+    --panel: #16213e;
+    --border: #0f3460;
+    --text: #eaeaea;
+    --muted: #cfcfcf;
+    --brand: #e94560; /* bright magenta accent */
+  }
+
+  body {
+    font-family: "Plus Jakarta Sans", sans-serif;
+    background: linear-gradient(135deg, #1a1a2e 0%, #0f3460 100%);
+    @apply min-h-screen text-gray-200 antialiased;
+  }
+
+  #root {
+    @apply min-h-screen;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    font-family: "Sora", sans-serif;
+  }
+}
+
+@layer components {
+  .app-shell {
+    @apply mx-auto flex min-h-screen w-full max-w-7xl px-4 py-5 md:px-6 md:py-7;
+  }
+
+  .page-content {
+    @apply animate-fade-in-up space-y-5;
+  }
+
+  .card {
+    background: var(--panel);
+    border-color: var(--border);
+    @apply rounded-2xl border shadow-card backdrop-blur-sm;
+  }
+
+  .card-muted {
+    @apply rounded-2xl border border-gray-600 bg-gray-800/75;
+  }
+
+  .page-title {
+    @apply text-2xl font-extrabold text-gray-100 md:text-3xl;
+  }
+
+  .page-kicker {
+    @apply text-xs font-bold uppercase tracking-[0.18em] text-brand-700;
+  }
+
+  .input-field {
+    @apply w-full rounded-xl border border-gray-600 bg-gray-800 px-4 py-2.5 text-sm text-gray-200 outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-100;
+  }
+
+  .btn-primary {
+    @apply inline-flex items-center justify-center rounded-xl bg-brand-300 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-brand-400 disabled:cursor-not-allowed disabled:opacity-60;
+  }
+
+  .btn-secondary {
+    @apply inline-flex items-center justify-center rounded-xl border border-gray-600 bg-gray-600 px-4 py-2.5 text-sm font-semibold text-gray-200 transition hover:bg-gray-500;
+  }
+
+  .btn-ghost {
+    @apply inline-flex items-center justify-center rounded-xl border border-transparent px-3 py-2 text-sm font-semibold text-gray-200 transition hover:border-gray-600 hover:bg-gray-700;
+  }
+
+  .status-pill {
+    @apply inline-flex rounded-full px-3 py-1 text-xs font-bold uppercase tracking-wide opacity-90;
+  }
+
+  .table-head {
+    @apply bg-gray-700 text-left text-xs font-bold uppercase tracking-[0.12em] text-gray-300;
+  }
+
+  .table-cell {
+    @apply px-4 py-3 text-sm text-gray-200;
+  }
+
+  .stat-number {
+    @apply text-3xl font-extrabold text-gray-100;
+  }
+}
