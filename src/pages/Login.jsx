@@ -56,40 +56,40 @@ const Login = () => {
   };
 
   return (
-    <div className="mx-auto flex min-h-screen w-full max-w-6xl items-center px-4 py-10 md:px-6">
-      <div className="grid w-full gap-4 md:grid-cols-[1fr_420px]">
-        <section className="card hidden p-8 md:block">
+    <div className="mx-auto flex min-h-screen w-full max-w-6xl items-center px-4 py-8 md:px-6">
+      <div className="grid w-full gap-5 md:grid-cols-[1.05fr_420px]">
+        <section className="hidden overflow-hidden rounded-3xl border border-rose-200 bg-gradient-to-br from-brand-500 via-brand-600 to-rose-400 p-8 text-white shadow-xl shadow-rose-200/70 md:flex md:flex-col md:justify-between">
           <div className="max-w-md animate-fade-in-up">
-            <p className="page-kicker">Employee Leave Management</p>
-            <h1 className="mt-3 text-4xl font-extrabold leading-tight text-slate-900">
-              A cleaner way to manage leave workflows.
+            <p className="text-xs font-bold uppercase tracking-widest text-rose-100">Employee Leave Management</p>
+            <h1 className="mt-3 text-4xl font-extrabold leading-tight text-white">
+              Faster leave approvals with cleaner operations.
             </h1>
-            <p className="mt-4 text-sm leading-6 text-slate-600">
-              Apply, review, and manage leave requests with role-based dashboards and policy-driven controls.
+            <p className="mt-4 text-sm leading-6 text-rose-50/95">
+              One portal for employees, managers, and admins with policy-first workflows and complete request visibility.
             </p>
-            <div className="mt-8 space-y-3">
-              <div className="card-muted p-3">
-                <p className="text-sm font-semibold text-slate-600">Role-aware access</p>
-                <p className="mt-1 text-xs text-slate-600">
-                  Admin, manager, and employee experiences are separated by policy.
-                </p>
-              </div>
-              <div className="card-muted p-3">
-                <p className="text-sm font-semibold text-slate-600">Live leave balance</p>
-                <p className="mt-1 text-xs text-slate-600">
-                  Employees see remaining balance and request limits before applying.
-                </p>
-              </div>
+          </div>
+          <div className="mt-8 grid gap-3">
+            <div className="rounded-2xl border border-white/25 bg-white/15 p-4 backdrop-blur-sm">
+              <p className="text-sm font-semibold text-white">Role-aware dashboards</p>
+              <p className="mt-1 text-xs text-rose-50/95">
+                Screen access and actions change automatically based on role.
+              </p>
+            </div>
+            <div className="rounded-2xl border border-white/25 bg-white/15 p-4 backdrop-blur-sm">
+              <p className="text-sm font-semibold text-white">Live request intelligence</p>
+              <p className="mt-1 text-xs text-rose-50/95">
+                Track leave balance, claims, and analytics in real time.
+              </p>
             </div>
           </div>
         </section>
 
-        <section className="card w-full p-8 animate-soft-pop">
-          <div className="mb-8 text-center">
-            <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-brand-500 text-lg font-extrabold text-white shadow-surface">
+        <section className="card w-full rounded-3xl p-7 animate-soft-pop md:p-8">
+          <div className="mb-7 text-center">
+            <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-brand-500 text-lg font-extrabold text-white shadow-lg shadow-brand-200/60">
               HR
             </div>
-            <h2 className="text-2xl font-extrabold text-slate-900">
+            <h2 className="text-2xl font-extrabold tracking-tight text-slate-900">
               {isRegisterMode ? "Create Account" : "Welcome Back"}
             </h2>
             <p className="mt-2 text-sm text-slate-600">
@@ -108,7 +108,7 @@ const Login = () => {
           <form className="space-y-4" onSubmit={handleSubmit}>
             {isRegisterMode && (
               <div>
-                <label className="mb-1 block text-sm font-semibold text-slate-600">
+                <label className="mb-1 block text-sm font-semibold text-slate-700">
                   Full Name
                 </label>
                 <input
@@ -124,7 +124,7 @@ const Login = () => {
             )}
 
             <div>
-              <label className="mb-1 block text-sm font-semibold text-slate-600">
+              <label className="mb-1 block text-sm font-semibold text-slate-700">
                 Email
               </label>
               <input
@@ -145,7 +145,7 @@ const Login = () => {
                 </label>
                 <button
                   type="button"
-                  className="text-xs font-semibold text-brand-700 hover:text-brand-600"
+                  className="rounded-md px-2 py-1 text-xs font-semibold text-brand-700 transition hover:bg-brand-50 hover:text-brand-600"
                   onClick={() => setShowPassword((current) => !current)}
                 >
                   {showPassword ? "Hide" : "Show"}
@@ -168,23 +168,19 @@ const Login = () => {
                 ? "Please wait..."
                 : isRegisterMode
                   ? "Create Account"
-                  : "Login"}
+                  : "Sign In"}
             </button>
           </form>
 
           <button
             type="button"
-            className="mt-4 w-full text-sm font-semibold text-brand-700 hover:text-brand-600"
+            className="mt-4 w-full rounded-xl border border-brand-100 bg-brand-50/70 px-4 py-2.5 text-sm font-semibold text-brand-700 transition hover:bg-brand-100/80"
             onClick={() => setIsRegisterMode((current) => !current)}
           >
             {isRegisterMode
-              ? "Already have an account? Login"
+              ? "Already have an account? Sign In"
               : "New here? Register account"}
           </button>
-
-          <p className="mt-6 text-center text-xs text-slate-500">
-
-          </p>
         </section>
       </div>
     </div>

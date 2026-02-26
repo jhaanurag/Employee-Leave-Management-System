@@ -6,12 +6,12 @@
 
 @layer base {
   :root {
-    --brand: #1f8f7b;
+    --brand: #e98fad;
   }
 
   body {
     font-family: "Plus Jakarta Sans", sans-serif;
-    background: #f8fafc;
+    background: radial-gradient(circle at top left, #fffafb 0%, #fffdf8 55%, #fff7fb 100%);
     @apply min-h-screen text-slate-800 antialiased;
   }
 
@@ -29,7 +29,7 @@
 
 @layer components {
   .app-shell {
-    @apply mx-auto flex min-h-screen w-full max-w-7xl px-4 py-5 md:px-6 md:py-7;
+    @apply mx-auto flex min-h-screen w-full max-w-6xl flex-col gap-5 px-4 py-5 md:px-6 md:py-7;
   }
 
   .page-content {
@@ -37,31 +37,43 @@
   }
 
   .card {
-    @apply rounded-2xl border border-slate-200 bg-white shadow-sm;
+    @apply rounded-2xl border border-slate-200/90 bg-white/95 shadow-md shadow-rose-100/50;
   }
 
   .card-muted {
-    @apply rounded-2xl border border-slate-200 bg-slate-50;
+    @apply rounded-2xl border border-slate-200 bg-slate-50/90;
   }
 
   .page-title {
-    @apply text-2xl font-extrabold text-slate-900 md:text-3xl;
+    @apply text-2xl font-bold tracking-tight text-slate-900 md:text-3xl;
   }
 
   .page-kicker {
-    @apply text-xs font-bold uppercase tracking-[0.18em] text-brand-700;
+    @apply text-xs font-bold uppercase tracking-widest text-brand-600;
   }
 
   .input-field {
-    @apply w-full rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm text-slate-900 outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-100;
+    @apply w-full rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm text-slate-900 outline-none transition duration-200 focus:-translate-y-px focus:border-brand-500 focus:ring-2 focus:ring-brand-100 focus:shadow-sm focus:shadow-brand-100;
   }
 
   .btn-primary {
-    @apply inline-flex items-center justify-center rounded-xl bg-brand-500 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-60;
+    @apply inline-flex items-center justify-center rounded-xl bg-brand-500 px-4 py-2.5 text-sm font-semibold text-white shadow-md shadow-brand-200/50 transition duration-200 hover:-translate-y-px hover:bg-brand-600 hover:shadow-lg hover:shadow-brand-200/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-200 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0;
   }
 
   .btn-secondary {
-    @apply inline-flex items-center justify-center rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50;
+    @apply inline-flex items-center justify-center rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm transition duration-200 hover:-translate-y-px hover:bg-slate-50 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-200 focus-visible:ring-offset-2;
+  }
+
+  .section-shell {
+    @apply rounded-2xl border p-5 md:p-6;
+  }
+
+  .section-leave {
+    @apply border-rose-100 bg-rose-50;
+  }
+
+  .section-reimbursement {
+    @apply border-amber-100 bg-amber-50;
   }
 
   .btn-ghost {
@@ -69,7 +81,7 @@
   }
 
   .status-pill {
-    @apply inline-flex rounded-full px-3 py-1 text-xs font-bold uppercase tracking-wide;
+    @apply inline-flex items-center justify-center whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-bold uppercase tracking-wide leading-none;
   }
 
   .table-head {

@@ -17,7 +17,7 @@ const router = express.Router();
 router.post(
   "/",
   verifyToken,
-  authorizeRoles("Employee"),
+  authorizeRoles("Employee", "Manager"),
   [
     body("startDate").isISO8601().withMessage("Valid startDate is required"),
     body("endDate").isISO8601().withMessage("Valid endDate is required"),
@@ -30,11 +30,11 @@ router.post(
   createLeaveRequest
 );
 
-router.get("/my", verifyToken, authorizeRoles("Employee"), getMyLeaves);
+router.get("/my", verifyToken, authorizeRoles("Employee", "Manager"), getMyLeaves);
 router.patch(
   "/:id/cancel",
   verifyToken,
-  authorizeRoles("Employee"),
+  authorizeRoles("Employee", "Manager"),
   [param("id").isMongoId().withMessage("Invalid leave id")],
   validateRequest,
   cancelLeaveRequest
@@ -45,7 +45,7 @@ router.get("/admin", verifyToken, authorizeRoles("Admin"), getAllLeavesForAdmin)
 router.patch(
   "/:id/review",
   verifyToken,
-  authorizeRoles("Manager"),
+  authorizeRoles("Manager", "Admin"),
   [
     param("id").isMongoId().withMessage("Invalid leave id"),
     body("status")

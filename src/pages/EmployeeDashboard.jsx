@@ -1,4 +1,14 @@
 import { useEffect, useMemo, useState } from "react";
+import {
+  ArcElement,
+  BarElement,
+  CategoryScale,
+  Chart as ChartJS,
+  Legend,
+  LinearScale,
+  Tooltip
+} from "chart.js";
+import { Bar, Doughnut } from "react-chartjs-2";
 import { useNavigate } from "react-router-dom";
 import LeaveCard from "../components/LeaveCard";
 import LeaveTable from "../components/LeaveTable";
@@ -57,6 +67,16 @@ const defaultReimbursementCategories = [
 ];
 
 const statusFilters = ["All", "Pending", "Approved", "Rejected", "Cancelled"];
+const dashboardTabs = ["Leaves", "Claims", "Analytics"];
+
+ChartJS.register(
+  ArcElement,
+  BarElement,
+  CategoryScale,
+  LinearScale,
+  Tooltip,
+  Legend
+);
 
 const calculateDays = (startDate, endDate) => {
   if (!startDate || !endDate) {
@@ -98,8 +118,6 @@ const EmployeeDashboard = () => {
   const [leaveForm, setLeaveForm] = useState(initialLeaveForm);
   const [leaveStatusFilter, setLeaveStatusFilter] = useState("All");
   const [leaveQuery, setLeaveQuery] = useState("");
-  const [activeTab, setActiveTab] = useState("Leaves");
-
   const [reimbursements, setReimbursements] = useState([]);
   const [reimbursementSummary, setReimbursementSummary] = useState(
     defaultReimbursementSummary
@@ -120,6 +138,7 @@ const EmployeeDashboard = () => {
   const [reimbursementStatusFilter, setReimbursementStatusFilter] =
     useState("All");
   const [reimbursementQuery, setReimbursementQuery] = useState("");
+  const [activeTab, setActiveTab] = useState("Leaves");
 
   const loadLeaves = async () => {
     setLeaveLoading(true);
@@ -236,6 +255,66 @@ const EmployeeDashboard = () => {
       return matchesStatus && matchesQuery;
     });
   }, [reimbursementQuery, reimbursementStatusFilter, reimbursements]);
+
+  const analyticsStatusData = useMemo(() => {
+    const leave = {
+      Pending: leaveRequestSummary.pending,
+      Approved: leaveRequestSummary.approved,
+      Rejected: leaveRequestSummary.rejected,
+      Cancelled: leaveRequestSummary.cancelled
+    };
+    const claim = {
+      Pending: reimbursementSummary.Pending || 0,
+      Approved: reimbursementSummary.Approved || 0,
+      Rejected: reimbursementSummary.Rejected || 0,
+      Cancelled: reimbursementSummary.Cancelled || 0
+    };
+    return { leave, claim };
+  }, [leaveRequestSummary, reimbursementSummary]);
+
+  const trendChartData = useMemo(() => {
+    const monthLabels = [];
+    const leaveByMonth = {};
+    const claimByMonth = {};
+    const now = new Date();
+
+    for (let offset = 5; offset >= 0; offset -= 1) {
+      const monthDate = new Date(now.getFullYear(), now.getMonth() - offset, 1);
+      const key = `${monthDate.getFullYear()}-${String(monthDate.getMonth() + 1).padStart(2, "0")}`;
+      const label = monthDate.toLocaleDateString(undefined, { month: "short" });
+      monthLabels.push(label);
+      leaveByMonth[key] = 0;
+      claimByMonth[key] = 0;
+    }
+
+    leaves.forEach((entry) => {
+      const entryDate = new Date(entry.createdAt);
+      if (Number.isNaN(entryDate.getTime())) {
+        return;
+      }
+      const key = `${entryDate.getFullYear()}-${String(entryDate.getMonth() + 1).padStart(2, "0")}`;
+      if (Object.prototype.hasOwnProperty.call(leaveByMonth, key)) {
+        leaveByMonth[key] += 1;
+      }
+    });
+
+    reimbursements.forEach((entry) => {
+      const entryDate = new Date(entry.createdAt);
+      if (Number.isNaN(entryDate.getTime())) {
+        return;
+      }
+      const key = `${entryDate.getFullYear()}-${String(entryDate.getMonth() + 1).padStart(2, "0")}`;
+      if (Object.prototype.hasOwnProperty.call(claimByMonth, key)) {
+        claimByMonth[key] += 1;
+      }
+    });
+
+    return {
+      labels: monthLabels,
+      leaveSeries: Object.values(leaveByMonth),
+      claimSeries: Object.values(claimByMonth)
+    };
+  }, [leaves, reimbursements]);
 
   const onLeaveChange = (event) => {
     const { name, value } = event.target;
@@ -431,33 +510,27 @@ const EmployeeDashboard = () => {
             </div>
           </div>
 
-          <div className="mt-6 border-b border-slate-200">
-            <nav className="-mb-px flex space-x-8">
+          
+
+          <div className="mt-6 flex flex-wrap gap-2 border-b border-slate-200 pb-3">
+            {dashboardTabs.map((tab) => (
               <button
-                onClick={() => setActiveTab("Leaves")}
-                className={`whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium ${
-                  activeTab === "Leaves"
-                    ? "border-brand-500 text-brand-600"
-                    : "border-transparent text-slate-500 hover:border-slate-300 hover:text-slate-700"
-                }`}
+                key={tab}
+                type="button"
+                onClick={() => setActiveTab(tab)}
+                className={
+                  activeTab === tab
+                    ? "rounded-full bg-brand-500 px-5 py-2.5 text-sm font-bold text-white"
+                    : "rounded-full bg-slate-100 px-5 py-2.5 text-sm font-bold text-slate-700 hover:bg-slate-200"
+                }
               >
-                Leaves
+                {tab}
               </button>
-              <button
-                onClick={() => setActiveTab("Reimbursements")}
-                className={`whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium ${
-                  activeTab === "Reimbursements"
-                    ? "border-brand-500 text-brand-600"
-                    : "border-transparent text-slate-500 hover:border-slate-300 hover:text-slate-700"
-                }`}
-              >
-                Reimbursements
-              </button>
-            </nav>
+            ))}
           </div>
 
           <div className="mt-5 flex flex-wrap gap-3">
-            {activeTab === "Leaves" && (
+            {activeTab === "Leaves" ? (
               <button
                 className="btn-primary"
                 onClick={() => setShowLeaveForm((current) => !current)}
@@ -465,16 +538,16 @@ const EmployeeDashboard = () => {
               >
                 {showLeaveForm ? "Close Leave Form" : "Apply Leave"}
               </button>
-            )}
-            {activeTab === "Reimbursements" && (
+            ) : null}
+            {activeTab === "Claims" ? (
               <button
                 className="btn-primary"
                 onClick={() => setShowReimbursementForm((current) => !current)}
                 type="button"
               >
-                {showReimbursementForm ? "Close Reimbursement Form" : "Claim Reimbursement"}
+                {showReimbursementForm ? "Close Claim Form" : "Create Claim"}
               </button>
-            )}
+            ) : null}
             <button className="btn-secondary" onClick={handleRefreshAll} type="button">
               Refresh All
             </button>
@@ -546,7 +619,7 @@ const EmployeeDashboard = () => {
             </form>
           ) : null}
 
-          {activeTab === "Reimbursements" && showReimbursementForm ? (
+          {activeTab === "Claims" && showReimbursementForm ? (
             <form
               className="mt-6 grid gap-4 rounded-2xl border border-slate-200 bg-slate-50 p-4 md:grid-cols-2"
               onSubmit={onReimbursementSubmit}
@@ -660,22 +733,25 @@ const EmployeeDashboard = () => {
             </div>
           ) : null}
 
-          {activeTab === "Reimbursements" && reimbursementSuccess ? (
+          {activeTab === "Claims" && reimbursementSuccess ? (
             <div className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-700">
               {reimbursementSuccess}
             </div>
           ) : null}
 
-          {activeTab === "Reimbursements" && reimbursementError ? (
+          {activeTab === "Claims" && reimbursementError ? (
             <div className="mt-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-700">
               {reimbursementError}
             </div>
           ) : null}
         </section>
 
-        {activeTab === "Leaves" && (
-          <>
-            <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        {activeTab === "Leaves" ? (
+        <section className="section-shell section-leave mt-5 space-y-5">
+          <div className="border-b border-rose-200 pb-2">
+            <h2 className="text-2xl font-bold tracking-tight text-slate-900">Leave Management</h2>
+          </div>
+          <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
               <LeaveCard
                 title="Total Requests"
                 value={leaveRequestSummary.total}
@@ -704,9 +780,9 @@ const EmployeeDashboard = () => {
                 subtitle={`${policy.annualLimitDays} annual day(s)`}
                 icon="BL"
               />
-            </section>
+          </section>
 
-            <section className="card p-4">
+          <section className="card p-4">
               <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                 <div className="flex flex-wrap gap-2">
                   {statusFilters.map((filter) => (
@@ -732,9 +808,9 @@ const EmployeeDashboard = () => {
                   onChange={(event) => setLeaveQuery(event.target.value)}
                 />
               </div>
-            </section>
+          </section>
 
-            <section>
+          <section>
               <div className="mb-3 flex items-center justify-between">
                 <h3 className="text-lg font-extrabold text-slate-900">Leave History</h3>
                 <p className="text-xs font-semibold text-slate-500">
@@ -753,13 +829,16 @@ const EmployeeDashboard = () => {
                   onCancel={handleCancelLeaveRequest}
                 />
               )}
-            </section>
-          </>
-        )}
+          </section>
+        </section>
+        ) : null}
 
-        {activeTab === "Reimbursements" && (
-          <>
-            <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        {activeTab === "Claims" ? (
+        <section className="section-shell section-reimbursement mt-6 space-y-5">
+          <div className="border-b border-amber-200 pb-2">
+            <h2 className="text-2xl font-bold tracking-tight text-slate-900">Claim Management</h2>
+          </div>
+          <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
               <LeaveCard
                 title="Reimbursement Claims"
                 value={reimbursements.length}
@@ -788,9 +867,9 @@ const EmployeeDashboard = () => {
                 subtitle="Under review"
                 icon="PA"
               />
-            </section>
+          </section>
 
-            <section className="card p-4">
+          <section className="card p-4">
               <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                 <div className="flex flex-wrap gap-2">
                   {statusFilters.map((filter) => (
@@ -816,9 +895,9 @@ const EmployeeDashboard = () => {
                   onChange={(event) => setReimbursementQuery(event.target.value)}
                 />
               </div>
-            </section>
+          </section>
 
-            <section>
+          <section>
               <div className="mb-3 flex items-center justify-between">
                 <h3 className="text-lg font-extrabold text-slate-900">Reimbursement History</h3>
                 <p className="text-xs font-semibold text-slate-500">
@@ -837,9 +916,87 @@ const EmployeeDashboard = () => {
                   onCancel={handleCancelReimbursementRequest}
                 />
               )}
-            </section>
-          </>
-        )}
+          </section>
+        </section>
+        ) : null}
+
+        {activeTab === "Analytics" ? (
+        <section className="section-shell mt-6 space-y-5 border-slate-200 bg-white/70">
+          <div className="border-b border-slate-200 pb-2">
+            <h2 className="text-2xl font-bold tracking-tight text-slate-900">Analytics</h2>
+            <p className="mt-1 text-sm text-slate-600">
+              Trends and status breakdown for your leave requests and claims.
+            </p>
+          </div>
+
+          <section className="grid gap-4 lg:grid-cols-2">
+            <article className="card p-4">
+              <h3 className="text-sm font-bold text-slate-900">Leave Status Mix</h3>
+              <div className="mt-4 h-72">
+                <Doughnut
+                  data={{
+                    labels: Object.keys(analyticsStatusData.leave),
+                    datasets: [
+                      {
+                        data: Object.values(analyticsStatusData.leave),
+                        backgroundColor: ["#f59e0b", "#34d399", "#fb7185", "#94a3b8"]
+                      }
+                    ]
+                  }}
+                  options={{ maintainAspectRatio: false }}
+                />
+              </div>
+            </article>
+            <article className="card p-4">
+              <h3 className="text-sm font-bold text-slate-900">Claim Status Mix</h3>
+              <div className="mt-4 h-72">
+                <Doughnut
+                  data={{
+                    labels: Object.keys(analyticsStatusData.claim),
+                    datasets: [
+                      {
+                        data: Object.values(analyticsStatusData.claim),
+                        backgroundColor: ["#f59e0b", "#34d399", "#fb7185", "#94a3b8"]
+                      }
+                    ]
+                  }}
+                  options={{ maintainAspectRatio: false }}
+                />
+              </div>
+            </article>
+          </section>
+
+          <article className="card p-4">
+            <h3 className="text-sm font-bold text-slate-900">Last 6 Months Activity</h3>
+            <div className="mt-4 h-80">
+              <Bar
+                data={{
+                  labels: trendChartData.labels,
+                  datasets: [
+                    {
+                      label: "Leaves",
+                      data: trendChartData.leaveSeries,
+                      backgroundColor: "#fda4af"
+                    },
+                    {
+                      label: "Claims",
+                      data: trendChartData.claimSeries,
+                      backgroundColor: "#fdba74"
+                    }
+                  ]
+                }}
+                options={{
+                  maintainAspectRatio: false,
+                  responsive: true,
+                  scales: {
+                    y: { beginAtZero: true, ticks: { precision: 0 } }
+                  }
+                }}
+              />
+            </div>
+          </article>
+        </section>
+        ) : null}
       </main>
     </div>
   );

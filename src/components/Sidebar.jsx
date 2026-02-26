@@ -12,24 +12,24 @@ const Sidebar = ({ role, userName, onLogout }) => {
   const navItems = navByRole[role] || [];
 
   return (
-    <div className="px-4 pt-4 md:px-6 md:pt-6">
-      <header className="w-full bg-slate-100 border border-slate-200 rounded-2xl px-6 py-4 flex items-center justify-between shadow-sm">
-        <div className="flex items-center space-x-8">
+    <header className="card w-full px-4 py-3 md:px-6">
+      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+        <div className="flex flex-wrap items-center gap-4 md:gap-8">
           <div className="flex items-center space-x-2">
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-500 text-sm font-bold text-white">
               HR
             </div>
-            <h1 className="text-xl font-bold tracking-tight text-slate-900">Leave Desk</h1>
+            <h1 className="text-lg font-bold tracking-tight text-slate-900 md:text-xl">Leave Desk</h1>
           </div>
-          <nav className="flex space-x-6">
+          <nav className="flex flex-wrap gap-4">
             {navItems.map((item) => (
               <NavLink
                 key={item.to}
                 to={item.to}
                 className={({ isActive }) =>
                   isActive
-                    ? "text-sm font-semibold text-brand-600 border-b-2 border-brand-600 pb-1"
-                    : "text-sm font-medium text-slate-500 hover:text-slate-900 pb-1 transition-colors"
+                    ? "rounded-full bg-brand-100 px-3 py-1 text-sm font-semibold text-brand-700"
+                    : "rounded-full px-3 py-1 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900"
                 }
               >
                 {item.label}
@@ -37,17 +37,17 @@ const Sidebar = ({ role, userName, onLogout }) => {
             ))}
           </nav>
         </div>
-        <div className="flex items-center space-x-6">
+        <div className="flex items-center justify-between gap-4 md:justify-end">
           <div className="text-right">
             <div className="text-sm font-semibold text-slate-900 truncate">{userName}</div>
             <div className="text-xs font-medium text-slate-500">{role}</div>
           </div>
-          <button className="btn-secondary text-sm" onClick={onLogout}>
+          <button className="btn-secondary text-sm" onClick={onLogout} type="button">
             Logout
           </button>
         </div>
-      </header>
-    </div>
+      </div>
+    </header>
   );
 };
 

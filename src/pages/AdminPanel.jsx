@@ -59,9 +59,10 @@ const AdminPanel = () => {
   const [updatingId, setUpdatingId] = useState("");
   const [userForm, setUserForm] = useState(emptyUserForm);
   const [searchQuery, setSearchQuery] = useState("");
-  const [activeTab, setActiveTab] = useState("Users");
   const [selectedRole, setSelectedRole] = useState("All");
   const [leaveSummary, setLeaveSummary] = useState(emptyLeaveSummary);
+  const [leaveRemarksById, setLeaveRemarksById] = useState({});
+  const [leaveActionLoadingId, setLeaveActionLoadingId] = useState("");
   const [reimbursementSummary, setReimbursementSummary] = useState(
     emptyReimbursementSummary
   );
@@ -94,6 +95,13 @@ const AdminPanel = () => {
   }, [searchQuery, selectedRole, users]);
 
   const recentLeaves = useMemo(() => leaves.slice(0, 6), [leaves]);
+  const managerPendingLeaves = useMemo(
+    () =>
+      leaves.filter(
+        (leave) => leave.employee?.role === "Manager" && leave.status === "Pending"
+      ),
+    [leaves]
+  );
   const recentReimbursements = useMemo(
     () => reimbursements.slice(0, 6),
     [reimbursements]
@@ -216,6 +224,28 @@ const AdminPanel = () => {
     navigate("/login", { replace: true });
   };
 
+  const handleLeaveRemarksChange = (id, value) => {
+    setLeaveRemarksById((current) => ({ ...current, [id]: value }));
+  };
+
+  const handleLeaveAction = async (id, status, remarks) => {
+    setLeaveActionLoadingId(id);
+    setError("");
+    setSuccess("");
+    try {
+      await api.patch(`/leaves/${id}/review`, { status, remarks });
+      setSuccess(`Manager leave request ${status.toLowerCase()} successfully.`);
+      await loadLeaves();
+    } catch (requestError) {
+      setError(
+        requestError.response?.data?.message ||
+          "Failed to review manager leave request."
+      );
+    } finally {
+      setLeaveActionLoadingId("");
+    }
+  };
+
   return (
     <div className="app-shell flex-col gap-4">
       <Sidebar role={user.role} userName={user.name} onLogout={handleLogout} />
@@ -242,46 +272,13 @@ const AdminPanel = () => {
               >
                 Add User
               </button>
-              <button className="btn-secondary" onClick={loadAllData} type="button">
+              <button className="btn-secondary" onClick={refreshAnalytics} type="button">
                 Refresh All
               </button>
             </div>
           </div>
 
-          <div className="mt-6 border-b border-slate-200">
-            <nav className="-mb-px flex space-x-8">
-              <button
-                onClick={() => setActiveTab("Users")}
-                className={`whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium ${
-                  activeTab === "Users"
-                    ? "border-brand-500 text-brand-600"
-                    : "border-transparent text-slate-500 hover:border-slate-300 hover:text-slate-700"
-                }`}
-              >
-                Users
-              </button>
-              <button
-                onClick={() => setActiveTab("Leaves")}
-                className={`whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium ${
-                  activeTab === "Leaves"
-                    ? "border-brand-500 text-brand-600"
-                    : "border-transparent text-slate-500 hover:border-slate-300 hover:text-slate-700"
-                }`}
-              >
-                Leaves
-              </button>
-              <button
-                onClick={() => setActiveTab("Reimbursements")}
-                className={`whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium ${
-                  activeTab === "Reimbursements"
-                    ? "border-brand-500 text-brand-600"
-                    : "border-transparent text-slate-500 hover:border-slate-300 hover:text-slate-700"
-                }`}
-              >
-                Reimbursements
-              </button>
-            </nav>
-          </div>
+          
         </section>
 
         {success ? (
@@ -296,9 +293,10 @@ const AdminPanel = () => {
           </div>
         ) : null}
 
-        {activeTab === "Users" && (
-          <>
-            <section className="card p-4">
+        <div className="mt-10 mb-6 border-b border-slate-200 pb-2">
+          <h2 className="text-2xl font-bold tracking-tight text-slate-900">User Management</h2>
+        </div>
+        <section className="card p-4">
               <div className="grid gap-4 sm:grid-cols-3">
                 <article className="rounded-xl bg-slate-50 border border-slate-200 p-4">
                   <p className="text-xs font-semibold uppercase text-slate-500">Admins</p>
@@ -387,11 +385,7 @@ const AdminPanel = () => {
                       </tr>
                     ) : (
                       filteredUsers.map((u) => (
-                        <tr
-                          key={u.id}
-                          className="cursor-pointer transition hover:bg-slate-50"
-                          onClick={() => handleEditUser(u)}
-                        >
+                        <tr key={u.id} className="transition hover:bg-slate-50">
                           <td className="table-cell font-semibold text-slate-900">
                             {u.name}
                           </td>
@@ -411,12 +405,12 @@ const AdminPanel = () => {
                 </table>
               </div>
             </section>
-          </>
-        )}
 
-        {activeTab === "Leaves" && (
-          <>
-            <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <section className="section-shell section-leave mt-6 space-y-5">
+          <div className="border-b border-rose-200 pb-2">
+            <h2 className="text-2xl font-bold tracking-tight text-slate-900">Leave Management</h2>
+          </div>
+          <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
               <LeaveCard
                 title="Pending Leaves"
                 value={leaveSummary.Pending}
@@ -445,9 +439,9 @@ const AdminPanel = () => {
                 subtitle="Withdrawn by employees"
                 icon="CL"
               />
-            </section>
+          </section>
 
-            <section>
+          <section>
               <div className="mb-3 flex items-center justify-between">
                 <h3 className="text-lg font-extrabold text-slate-900">Recent Leave Requests</h3>
               </div>
@@ -458,13 +452,38 @@ const AdminPanel = () => {
               ) : (
                 <LeaveTable leaves={recentLeaves} showEmployee />
               )}
-            </section>
-          </>
-        )}
+          </section>
 
-        {activeTab === "Reimbursements" && (
-          <>
-            <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <section>
+            <div className="mb-3 flex items-center justify-between">
+              <h3 className="text-lg font-extrabold text-slate-900">Manager Leave Approvals</h3>
+              <p className="text-xs font-semibold text-slate-500">
+                {managerPendingLeaves.length} pending request(s)
+              </p>
+            </div>
+            {loadingLeaves ? (
+              <div className="card px-6 py-4 text-sm font-semibold text-slate-600">
+                Loading manager leave requests...
+              </div>
+            ) : (
+              <LeaveTable
+                leaves={managerPendingLeaves}
+                showEmployee
+                actionable
+                remarksById={leaveRemarksById}
+                actionLoadingId={leaveActionLoadingId}
+                onRemarksChange={handleLeaveRemarksChange}
+                onAction={handleLeaveAction}
+              />
+            )}
+          </section>
+        </section>
+
+        <section className="section-shell section-reimbursement mt-6 space-y-5">
+          <div className="border-b border-amber-200 pb-2">
+            <h2 className="text-2xl font-bold tracking-tight text-slate-900">Reimbursements</h2>
+          </div>
+          <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
               <LeaveCard
                 title="Pending Claims"
                 value={reimbursementSummary.Pending}
@@ -493,9 +512,9 @@ const AdminPanel = () => {
                 subtitle="All submitted claims"
                 icon="TC"
               />
-            </section>
+          </section>
 
-            <section>
+          <section>
               <div className="mb-3 flex items-center justify-between">
                 <h3 className="text-lg font-extrabold text-slate-900">
                   Recent Reimbursement Claims
@@ -508,9 +527,8 @@ const AdminPanel = () => {
               ) : (
                 <ReimbursementTable reimbursements={recentReimbursements} showEmployee />
               )}
-            </section>
-          </>
-        )}
+          </section>
+        </section>
       </main>
 
       {showCreateModal ? (

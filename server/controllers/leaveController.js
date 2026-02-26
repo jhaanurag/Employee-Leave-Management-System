@@ -63,14 +63,16 @@ const formatRelatedUser = (user) => {
     return {
       id: user._id,
       name: user.name || "",
-      email: user.email || ""
+      email: user.email || "",
+      role: user.role || ""
     };
   }
 
   return {
     id: user,
     name: "",
-    email: ""
+    email: "",
+    role: ""
   };
 };
 
@@ -354,11 +356,13 @@ export const cancelLeaveRequest = async (req, res, next) => {
 export const getManagerLeaves = async (req, res, next) => {
   try {
     const leaves = await Leave.find({})
-      .populate("employee", "name email")
+      .populate("employee", "name email role")
       .populate("reviewedBy", "name email")
       .sort({ status: 1, createdAt: -1 });
 
-    const formattedLeaves = leaves.map((leave) => formatLeave(leave));
+    const formattedLeaves = leaves
+      .map((leave) => formatLeave(leave))
+      .filter((leave) => leave.employee?.role === "Employee");
 
     return res.status(200).json({
       success: true,
@@ -377,7 +381,7 @@ export const reviewLeaveRequest = async (req, res, next) => {
     const { id } = req.params;
     const { status, remarks } = req.body;
 
-    const leave = await Leave.findById(id);
+    const leave = await Leave.findById(id).populate("employee", "name email role");
     if (!leave) {
       return res.status(404).json({
         success: false,
@@ -392,13 +396,30 @@ export const reviewLeaveRequest = async (req, res, next) => {
       });
     }
 
+    const requesterRole = leave.employee?.role || "";
+    const reviewerRole = req.user?.role || "";
+
+    if (requesterRole === "Manager" && reviewerRole !== "Admin") {
+      return res.status(403).json({
+        success: false,
+        message: "Manager leave requests can only be reviewed by Admin."
+      });
+    }
+
+    if (requesterRole === "Employee" && reviewerRole !== "Manager") {
+      return res.status(403).json({
+        success: false,
+        message: "Employee leave requests can only be reviewed by Manager."
+      });
+    }
+
     leave.status = status;
     leave.remarks = remarks || "";
     leave.reviewedBy = req.user.id;
     await leave.save();
 
     const populated = await Leave.findById(leave._id)
-      .populate("employee", "name email")
+      .populate("employee", "name email role")
       .populate("reviewedBy", "name email");
 
     return res.status(200).json({
@@ -414,7 +435,7 @@ export const reviewLeaveRequest = async (req, res, next) => {
 export const getAllLeavesForAdmin = async (req, res, next) => {
   try {
     const leaves = await Leave.find({})
-      .populate("employee", "name email")
+      .populate("employee", "name email role")
       .populate("reviewedBy", "name email")
       .sort({ createdAt: -1 });
 

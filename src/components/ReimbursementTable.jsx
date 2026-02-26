@@ -1,5 +1,5 @@
 const statusClassMap = {
-  Pending: "bg-amber-100 text-amber-700",
+  Pending: "border border-amber-300 bg-amber-100 text-amber-800",
   Approved: "bg-emerald-100 text-emerald-700",
   Rejected: "bg-rose-100 text-rose-700",
   Cancelled: "bg-slate-100 text-slate-700"
@@ -45,7 +45,7 @@ const ReimbursementTable = ({
       {reimbursements.map((claim) => (
         <div
           key={claim.id}
-          className="bg-panel rounded-xl p-5 shadow-lg transition hover:shadow-xl"
+          className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm transition hover:shadow-md"
         >
           <div className="flex justify-between">
             <div className="space-y-1">
